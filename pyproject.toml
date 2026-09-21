@@ -1,0 +1,37 @@
+[project]
+name = "home-credit-observability"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "RafaExMachina", email = "fael1928@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "joblib>=1.6.0",
+    "kagglehub>=1.0.2",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.3",
+    "pandas>=3.0.6",
+    "pandera[pandas]>=0.33.1",
+    "pyarrow>=25.0.1",
+    "pyyaml>=6.0.3",
+    "scikit-learn>=1.9.1",
+    "seaborn>=0.13.2",
+]
+
+[project.scripts]
+home-credit-observability = "home_credit_observability:main"
+
+[build-system]
+requires = ["uv_build>=0.10.12,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.8",
+]

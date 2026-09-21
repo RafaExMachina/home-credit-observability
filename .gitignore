@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Ambiente virtual
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Credenciais e variáveis
+.env
+kaggle.json
+
+# Dados gerados ou baixados
+data/raw/*
+data/processed/*
+data/reference/*
+data/samples/*.csv
+
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/reference/.gitkeep
+!data/samples/.gitkeep
+
+# Modelos e métricas
+artifacts/models/*
+artifacts/metrics/*
+
+!artifacts/models/.gitkeep
+!artifacts/metrics/.gitkeep
+
+# Relatórios gerados
+reports/data_quality/*
+reports/logs/*
+
+!reports/data_quality/.gitkeep
+!reports/logs/.gitkeep
+
+# Editores e sistema operacional
+.vscode/
+.idea/
+.DS_Store
