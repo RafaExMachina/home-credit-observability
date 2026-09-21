@@ -1,0 +1,1 @@
+"""Pipelines executáveis do projeto."""

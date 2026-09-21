@@ -1,0 +1,26 @@
+dataset: openml_credit_risk_43454
+source: https://www.openml.org/d/43454
+minimum_rows: 5000
+target: loan_status
+rules:
+  loan_status:
+    nullable: false
+    allowed_values: [0, 1]
+  person_age:
+    nullable: false
+    min: 18
+    max: 100
+  person_income:
+    nullable: false
+    min_exclusive: 0
+  loan_amnt:
+    nullable: false
+    min_exclusive: 0
+  loan_percent_income:
+    nullable: false
+    min: 0
+    max: 1
+  person_emp_length:
+    nullable: true
+    min: 0
+    max: 80
