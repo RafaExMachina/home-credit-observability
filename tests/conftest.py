@@ -35,4 +35,3 @@ def valid_data() -> pd.DataFrame:
             "cb_person_cred_hist_length": rng.integers(2, 30, size).astype(float),
         }
     )
-
