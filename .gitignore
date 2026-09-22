@@ -47,3 +47,9 @@ reports/logs/*
 .vscode/
 .idea/
 .DS_Store
+
+# Etapa 2 - artefatos de drift
+data/production/*
+!data/production/.gitkeep
+reports/drift/*
+!reports/drift/.gitkeep
