@@ -376,7 +376,7 @@ uv run python scripts/run_drift.py
 * `v0.1.0`: validação de dados, contrato Pandera e modelo baseline.
 * `v0.2.0`: simulação de produção, detecção de drift e relatório Evidently.
 
-A versão `v0.2.0` será criada após a integração da Etapa 2 na branch `main`.
+A versão `v0.2.0` consolida a simulação de produção, a detecção estatística de drift, a análise de degradação e o relatório Evidently.
 
 ## Próximas etapas
 
