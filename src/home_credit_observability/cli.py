@@ -1,3 +1,5 @@
+"""Interface de linha de comando do projeto."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,6 +12,7 @@ from home_credit_observability.data.prepare import (
     clean_reference_data,
     select_model_columns,
 )
+from home_credit_observability.pipelines.drift_pipeline import run_drift_pipeline
 from home_credit_observability.pipelines.train_pipeline import run_training_pipeline
 from home_credit_observability.validation.schema import make_invalid_batch
 from home_credit_observability.validation.validator import (
@@ -19,23 +22,27 @@ from home_credit_observability.validation.validator import (
 
 
 def _reference_data():
+    """Baixa, seleciona e limpa o dataset de referência."""
     path = download_credit_risk()
     raw = load_application_data(path)
     return clean_reference_data(select_model_columns(raw))
 
 
 def _download(force: bool) -> int:
+    """Executa o download do dataset."""
     print(download_credit_risk(force=force))
     return 0
 
 
 def _validate() -> int:
+    """Valida o dataset de referência."""
     validated = validate_credit_risk(_reference_data())
     print(f"Contrato aprovado para {len(validated):,} registros.")
     return 0
 
 
 def _validate_invalid() -> int:
+    """Demonstra o bloqueio de um lote propositalmente inválido."""
     invalid = make_invalid_batch(_reference_data())
     SAMPLES_DIR.mkdir(parents=True, exist_ok=True)
     invalid_path = SAMPLES_DIR / "invalid_batch.csv"
@@ -53,22 +60,38 @@ def _validate_invalid() -> int:
 
 
 def _train(force: bool) -> int:
+    """Treina e persiste o modelo baseline."""
     result = run_training_pipeline(force_download=force)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0
 
 
+def _drift(sample_size: int, random_state: int) -> int:
+    """Executa a simulação e a análise de drift."""
+    result = run_drift_pipeline(
+        sample_size=sample_size,
+        random_state=random_state,
+    )
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
+    """Constrói o parser e seus subcomandos."""
     parser = argparse.ArgumentParser(description="Credit Risk Observability")
     subparsers = parser.add_subparsers(dest="command", required=True)
     for name in ("download", "validate", "validate-invalid", "train"):
         subparser = subparsers.add_parser(name)
         if name in {"download", "train"}:
             subparser.add_argument("--force", action="store_true")
+    drift_parser = subparsers.add_parser("drift")
+    drift_parser.add_argument("--sample-size", type=int, default=8_000)
+    drift_parser.add_argument("--random-state", type=int, default=42)
     return parser
 
 
 def main() -> int:
+    """Despacha o subcomando solicitado."""
     args = build_parser().parse_args()
     if args.command == "download":
         return _download(args.force)
@@ -78,6 +101,8 @@ def main() -> int:
         return _validate_invalid()
     if args.command == "train":
         return _train(args.force)
+    if args.command == "drift":
+        return _drift(args.sample_size, args.random_state)
     return 2
 
 

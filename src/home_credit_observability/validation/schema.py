@@ -40,9 +40,7 @@ def build_credit_risk_schema(min_rows: int = 5_000) -> pa.DataFrameSchema:
             "loan_grade": pa.Column(
                 str, pa.Check.isin(list("ABCDEFG")), nullable=False, coerce=True
             ),
-            "loan_amnt": pa.Column(
-                float, pa.Check.gt(0), nullable=False, coerce=True
-            ),
+            "loan_amnt": pa.Column(float, pa.Check.gt(0), nullable=False, coerce=True),
             "loan_int_rate": pa.Column(
                 float, pa.Check.gt(0), nullable=True, coerce=True
             ),

@@ -40,8 +40,6 @@ def clean_reference_data(dataframe: pd.DataFrame) -> pd.DataFrame:
         cleaned["person_emp_length"].isna()
         | cleaned["person_emp_length"].between(0, 80)
     ]
-    cleaned = cleaned[
-        cleaned["loan_int_rate"].isna() | (cleaned["loan_int_rate"] > 0)
-    ]
+    cleaned = cleaned[cleaned["loan_int_rate"].isna() | (cleaned["loan_int_rate"] > 0)]
     cleaned = cleaned[cleaned["cb_person_cred_hist_length"].between(0, 100)]
     return cleaned.reset_index(drop=True)
