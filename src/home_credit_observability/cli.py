@@ -13,6 +13,9 @@ from home_credit_observability.data.prepare import (
     select_model_columns,
 )
 from home_credit_observability.pipelines.drift_pipeline import run_drift_pipeline
+from home_credit_observability.pipelines.monitoring_pipeline import (
+    run_monitoring_pipeline,
+)
 from home_credit_observability.pipelines.train_pipeline import run_training_pipeline
 from home_credit_observability.validation.schema import make_invalid_batch
 from home_credit_observability.validation.validator import (
@@ -68,7 +71,14 @@ def _train(force: bool) -> int:
 
 def _drift(sample_size: int, random_state: int) -> int:
     """Executa a simulação e a análise de drift."""
-    result = run_drift_pipeline(
+    result = run_drift_pipeline(sample_size=sample_size, random_state=random_state)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0
+
+
+def _monitor(sample_size: int, random_state: int) -> int:
+    """Executa observabilidade, alertas e dashboard da Etapa 3."""
+    result = run_monitoring_pipeline(
         sample_size=sample_size,
         random_state=random_state,
     )
@@ -84,9 +94,10 @@ def build_parser() -> argparse.ArgumentParser:
         subparser = subparsers.add_parser(name)
         if name in {"download", "train"}:
             subparser.add_argument("--force", action="store_true")
-    drift_parser = subparsers.add_parser("drift")
-    drift_parser.add_argument("--sample-size", type=int, default=8_000)
-    drift_parser.add_argument("--random-state", type=int, default=42)
+    for name in ("drift", "monitor"):
+        subparser = subparsers.add_parser(name)
+        subparser.add_argument("--sample-size", type=int, default=8_000)
+        subparser.add_argument("--random-state", type=int, default=42)
     return parser
 
 
@@ -103,6 +114,8 @@ def main() -> int:
         return _train(args.force)
     if args.command == "drift":
         return _drift(args.sample_size, args.random_state)
+    if args.command == "monitor":
+        return _monitor(args.sample_size, args.random_state)
     return 2
 
 
