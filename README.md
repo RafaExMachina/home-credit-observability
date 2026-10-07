@@ -394,7 +394,7 @@ uv run python scripts/run_monitoring.py
 
 - `v0.1.0`: validação de dados, contrato Pandera e modelo baseline.
 - `v0.2.0`: simulação de produção, detecção de drift e relatório Evidently.
-- `v0.3.0` (próxima versão): observabilidade, logs estruturados, métricas Prometheus, alertas e dashboard.
+- `v0.3.0`: observabilidade, logs estruturados, métricas Prometheus, alertas e dashboard.
 
 ## Próximas etapas
 
