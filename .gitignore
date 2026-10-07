@@ -53,3 +53,9 @@ data/production/*
 !data/production/.gitkeep
 reports/drift/*
 !reports/drift/.gitkeep
+
+# Etapa 3 - observabilidade
+reports/monitoring/*
+!reports/monitoring/.gitkeep
+reports/logs/*
+!reports/logs/.gitkeep
