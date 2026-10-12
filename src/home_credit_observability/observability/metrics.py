@@ -15,26 +15,24 @@ from home_credit_observability.drift.prediction import PredictionService
 
 
 class PredictionLatencyMonitor:
-    """Mede a latência de inferência por registro em pequenos lotes."""
+    """Mede chamadas individuais ao serviço, incluindo seu pré-processamento."""
 
-    def __init__(self, predictor: PredictionService, *, batch_size: int = 256) -> None:
-        """Recebe o serviço de predição e o tamanho dos lotes medidos."""
-        if batch_size < 1:
-            raise ValueError("batch_size deve ser positivo")
+    def __init__(self, predictor: PredictionService) -> None:
+        """Recebe um serviço já carregado; loading não entra na latência."""
         self.predictor = predictor
-        self.batch_size = batch_size
 
     def measure(self, dataframe: pd.DataFrame) -> list[float]:
         """Executa inferências e retorna latências em milissegundos por registro."""
         if dataframe.empty:
             raise ValueError("o dataset de produção não pode ser vazio")
+        self.predictor.predict(dataframe.iloc[:1])  # Warm-up fora da medição.
         latencies: list[float] = []
-        for start in range(0, len(dataframe), self.batch_size):
-            batch = dataframe.iloc[start : start + self.batch_size]
+        for start in range(len(dataframe)):
+            batch = dataframe.iloc[start : start + 1]
             started_at = perf_counter()
             self.predictor.predict(batch)
             elapsed_ms = (perf_counter() - started_at) * 1_000
-            latencies.append(elapsed_ms / len(batch))
+            latencies.append(elapsed_ms)
         return latencies
 
 
@@ -64,11 +62,17 @@ class HealthMetricsCollector:
         current_metrics = performance["production"]
         delta = performance["delta"]
         latency = np.asarray(latency_samples_ms, dtype=float)
+        if not np.isfinite(latency).all() or (latency < 0).any():
+            raise ValueError("latências devem ser finitas e não negativas")
         return {
             "prediction_count": float(len(production)),
             "prediction_null_ratio": float(prediction.isna().mean()),
             "prediction_positive_ratio": float(prediction.mean()),
-            "prediction_confidence_mean": float(probability.mean()),
+            "prediction_default_probability_mean": float(probability.mean()),
+            "prediction_confidence_mean": float(
+                probability.where(prediction == 1, 1 - probability).mean()
+            ),
+            "prediction_latency_samples": float(len(latency)),
             "prediction_latency_p50_ms": float(np.percentile(latency, 50)),
             "prediction_latency_p95_ms": float(np.percentile(latency, 95)),
             "prediction_latency_p99_ms": float(np.percentile(latency, 99)),
@@ -77,7 +81,7 @@ class HealthMetricsCollector:
             "model_recall": float(current_metrics["recall"]),
             "model_recall_delta": float(delta["recall"]),
             "model_roc_auc": float(current_metrics["roc_auc"]),
-            "pipeline_duration_seconds": float(pipeline_duration_seconds),
+            "pipeline_duration_before_export_seconds": float(pipeline_duration_seconds),
         }
 
 

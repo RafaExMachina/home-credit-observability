@@ -50,15 +50,16 @@ class AlertPolicyEvaluator:
             metrics["prediction_null_ratio"],
             self.max_null_ratio,
         )
-        self._append_if(
-            alerts,
-            metrics["prediction_latency_p95_ms"] > self.max_latency_p95_ms,
-            "INFERENCE_LATENCY_P95",
-            "warning",
-            "A latência p95 excedeu o SLO definido.",
-            metrics["prediction_latency_p95_ms"],
-            self.max_latency_p95_ms,
-        )
+        if "prediction_latency_p95_ms" in metrics:
+            self._append_if(
+                alerts,
+                metrics["prediction_latency_p95_ms"] > self.max_latency_p95_ms,
+                "INFERENCE_LATENCY_P95",
+                "warning",
+                "A latência p95 excedeu o SLO definido.",
+                metrics["prediction_latency_p95_ms"],
+                self.max_latency_p95_ms,
+            )
         self._append_if(
             alerts,
             metrics["drifted_features_count"] > 0,

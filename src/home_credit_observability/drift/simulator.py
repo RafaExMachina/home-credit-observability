@@ -30,9 +30,14 @@ class ProductionDataSimulator:
         """Amostra registros e aplica drift em renda, juros e comprometimento."""
         if reference.empty:
             raise ValueError("o dataset de referência não pode ser vazio")
+        if self.sample_size > len(reference):
+            raise ValueError(
+                f"sample_size={self.sample_size} excede a coorte disponível "
+                f"({len(reference)}). Não é permitida amostragem com reposição."
+            )
         current = reference.sample(
             n=self.sample_size,
-            replace=self.sample_size > len(reference),
+            replace=False,
             random_state=self.random_state,
         ).reset_index(drop=True)
         current["person_income"] = current["person_income"] * self.income_multiplier

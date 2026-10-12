@@ -51,3 +51,7 @@ Uma nova versão só pode substituir a atual quando contratos, testes, métricas
 fairness, segurança e documentação forem aprovados. O artefato anterior deve ser
 mantido durante a janela de rollback. Alertas nunca devem disparar retreinamento e
 implantação sem validação humana.
+
+## Escopo das medições corrigidas
+
+Latência é de chamadas individuais ao serviço já carregado, após warm-up, incluindo pré-processamento, sem HTTP. O Evidently usa as mesmas sete features numéricas, a mesma política PSI >= 0,25 OU KS p < 0,05 e limiar global de pelo menos uma feature. A comparação de recall usa a mesma coorte independente antes/depois. O experimento sintético de Concept Drift monitora desempenho com rótulos disponíveis, sem medir latência.

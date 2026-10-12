@@ -12,6 +12,7 @@ from home_credit_observability.data.prepare import (
     clean_reference_data,
     select_model_columns,
 )
+from home_credit_observability.pipelines.concept_pipeline import run_concept_pipeline
 from home_credit_observability.pipelines.drift_pipeline import run_drift_pipeline
 from home_credit_observability.pipelines.monitoring_pipeline import (
     run_monitoring_pipeline,
@@ -94,7 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
         subparser = subparsers.add_parser(name)
         if name in {"download", "train"}:
             subparser.add_argument("--force", action="store_true")
-    for name in ("drift", "monitor"):
+    for name in ("drift", "monitor", "concept"):
         subparser = subparsers.add_parser(name)
         subparser.add_argument("--sample-size", type=int, default=8_000)
         subparser.add_argument("--random-state", type=int, default=42)
@@ -116,6 +117,17 @@ def main() -> int:
         return _drift(args.sample_size, args.random_state)
     if args.command == "monitor":
         return _monitor(args.sample_size, args.random_state)
+    if args.command == "concept":
+        print(
+            json.dumps(
+                run_concept_pipeline(
+                    sample_size=args.sample_size, random_state=args.random_state
+                ),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
     return 2
 
 

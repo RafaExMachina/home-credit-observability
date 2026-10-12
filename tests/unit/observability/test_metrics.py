@@ -4,6 +4,7 @@ import pandas as pd
 
 from home_credit_observability.observability.metrics import (
     HealthMetricsCollector,
+    PredictionLatencyMonitor,
     PrometheusTextExporter,
 )
 
@@ -31,3 +32,20 @@ def test_health_metrics_collector_consolidates_sources(tmp_path):
     assert metrics["prediction_null_ratio"] == 0
     assert metrics["drifted_features_count"] == 1
     assert "home_credit_model_recall" in output.read_text(encoding="utf-8")
+    assert abs(metrics["prediction_confidence_mean"] - (0.9 + 0.8 + 0.9) / 3) < 1e-9
+
+
+def test_latency_measures_one_call_per_row_after_warmup():
+    sizes = []
+
+    class Predictor:
+        def predict(self, dataframe):
+            sizes.append(len(dataframe))
+            return dataframe
+
+    samples = PredictionLatencyMonitor(Predictor()).measure(
+        pd.DataFrame({"feature": [1, 2, 3]})
+    )
+    assert sizes == [1, 1, 1, 1]
+    assert len(samples) == 3
+    assert all(value >= 0 for value in samples)

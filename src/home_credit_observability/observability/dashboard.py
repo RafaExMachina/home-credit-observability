@@ -33,7 +33,7 @@ class PlotlyHealthDashboard:
                 "Predições nulas",
                 "Latência p95",
                 "PSI por variável",
-                "Desempenho do modelo",
+                "Desempenho: mesma coorte antes/depois",
             ),
         )
         figure.add_trace(
@@ -74,7 +74,7 @@ class PlotlyHealthDashboard:
                 go.Bar(
                     x=metric_names,
                     y=[performance[dataset][name] for name in metric_names],
-                    name=dataset.capitalize(),
+                    name="Antes" if dataset == "reference" else "Depois",
                     marker_color=color,
                 ),
                 row=2,
@@ -109,6 +109,11 @@ class PlotlyHealthDashboard:
             "table{border-collapse:collapse;width:100%}th,td{padding:10px;"
             "border:1px solid #d8dee9;text-align:left}th{background:#eef2ff}"
             "</style></head><body>"
+            "<p>Drift: PSI ≥ 0,25 ou KS p &lt; 0,05 em qualquer feature numérica. "
+            "Evidently utiliza os mesmos detectores; saídas não contam como features. "
+            "Testes KS são diagnósticos exploratórios sem correção múltipla.</p>"
+            "<p>Latência: chamadas individuais ao serviço já carregado, após warm-up; "
+            "inclui pré-processamento, não inclui HTTP ou carregamento do modelo.</p>"
             f"{html}{alert_table}</body></html>"
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)

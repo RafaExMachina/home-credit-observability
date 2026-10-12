@@ -54,6 +54,7 @@ def run_drift_pipeline(
     sample_size: int = 8_000,
     random_state: int = 42,
     reference_path: Path | None = None,
+    production_source_path: Path | None = None,
     model_path: Path | None = None,
     production_dir: Path | None = None,
     report_dir: Path | None = None,
@@ -61,6 +62,9 @@ def run_drift_pipeline(
     """Executa toda a Etapa 2 e devolve caminhos e resumo estatístico."""
     reference_path = reference_path or REFERENCE_DIR / "reference.parquet"
     model_path = model_path or MODELS_DIR / "baseline_pipeline.joblib"
+    production_source_path = (
+        production_source_path or REFERENCE_DIR / "production_source.parquet"
+    )
     production_dir = production_dir or PROJECT_ROOT / "data" / "production"
     report_dir = report_dir or PROJECT_ROOT / "reports" / "drift"
     if not reference_path.exists():
@@ -69,15 +73,25 @@ def run_drift_pipeline(
         )
 
     reference = pd.read_parquet(reference_path)
+    if not production_source_path.exists():
+        raise FileNotFoundError(
+            "Coorte independente ausente. Execute train novamente; "
+            "não reutilize os artefatos anteriores à correção."
+        )
+    source = validate_credit_risk(pd.read_parquet(production_source_path), min_rows=1)
     simulator = ProductionDataSimulator(
         sample_size=sample_size,
         random_state=random_state,
     )
-    current = validate_credit_risk(simulator.simulate(reference), min_rows=1)
+    current = validate_credit_risk(simulator.simulate(source), min_rows=1)
+    before = source.sample(n=sample_size, random_state=random_state).reset_index(
+        drop=True
+    )
 
     predictor = PredictionService(model_path)
     reference_scored = predictor.predict(reference)
     current_scored = predictor.predict(current)
+    before_scored = predictor.predict(before)
 
     service = DriftDetectionService(
         [PSIDetector(threshold=0.25), KolmogorovSmirnovDetector(alpha=0.05)]
@@ -92,11 +106,15 @@ def run_drift_pipeline(
     performance_path = report_dir / "model_performance_comparison.json"
     html_path = report_dir / "evidently_drift_report.html"
     current_scored.to_parquet(production_path, index=False)
+    before_scored.to_parquet(production_dir / "production_before.parquet", index=False)
     results_path.write_text(
         json.dumps(serialized, indent=2, ensure_ascii=False, allow_nan=False),
         encoding="utf-8",
     )
-    performance = _compare_performance(reference_scored, current_scored)
+    # "reference" neste JSON é a coorte de avaliação antes da transformação,
+    # não o dataset de referência usado no teste de distribuição.
+    performance = _compare_performance(before_scored, current_scored)
+    performance["evaluation_protocol"] = "paired_independent_production_cohort"
     performance_path.write_text(
         json.dumps(performance, indent=2, ensure_ascii=False, allow_nan=False),
         encoding="utf-8",
@@ -114,6 +132,8 @@ def run_drift_pipeline(
         "performance_comparison_path": str(performance_path),
         "evidently_report_path": str(html_path),
         "reference_rows": len(reference),
+        "production_source_rows": len(source),
+        "evaluation_protocol": performance["evaluation_protocol"],
         "production_rows": len(current),
         "drift_tests": len(results),
         "detected_tests": sum(result.drift_detected for result in results),

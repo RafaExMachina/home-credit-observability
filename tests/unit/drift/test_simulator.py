@@ -1,6 +1,7 @@
 """Testes da simulação do dataset de produção."""
 
 import pandas as pd
+import pytest
 
 from home_credit_observability.drift.simulator import ProductionDataSimulator
 
@@ -19,11 +20,16 @@ def _reference() -> pd.DataFrame:
 
 def test_simulator_is_reproducible_and_preserves_row_count() -> None:
     """A mesma semente deve gerar exatamente o mesmo lote."""
-    simulator = ProductionDataSimulator(sample_size=10, random_state=7)
+    simulator = ProductionDataSimulator(sample_size=3, random_state=7)
     first = simulator.simulate(_reference())
     second = simulator.simulate(_reference())
     pd.testing.assert_frame_equal(first, second)
-    assert len(first) == 10
+    assert len(first) == 3
+
+
+def test_simulator_rejects_replacement_sampling() -> None:
+    with pytest.raises(ValueError, match="excede"):
+        ProductionDataSimulator(sample_size=10).simulate(_reference())
 
 
 def test_simulator_changes_financial_distributions() -> None:

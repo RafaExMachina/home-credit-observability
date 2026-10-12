@@ -200,11 +200,11 @@ O modelo baseline utiliza Regressão Logística com pré-processamento numérico
 
 | Métrica | Resultado |
 |---|---:|
-| Accuracy | 0,8059 |
-| Precision | 0,5389 |
-| Recall | 0,7821 |
-| F1-score | 0,6381 |
-| ROC AUC | 0,8716 |
+| Accuracy | 0,8074 |
+| Precision | 0,5408 |
+| Recall | 0,7946 |
+| F1-score | 0,6436 |
+| ROC AUC | 0,8792 |
 
 ## Etapa 2 — Simulação e detecção de drift
 
@@ -234,23 +234,23 @@ Foram executados 14 testes, correspondentes a sete variáveis numéricas analisa
 
 | Variável | PSI | Resultado |
 |---|---:|---|
-| `person_income` | 0,3005 | Drift |
-| `loan_int_rate` | 2,6385 | Drift |
-| `loan_percent_income` | 0,2928 | Drift |
+| `person_income` | 0,2711 | Drift |
+| `loan_int_rate` | 2,6291 | Drift |
+| `loan_percent_income` | 0,2721 | Drift |
 
 Permaneceram estáveis `person_age`, `person_emp_length`, `loan_amnt` e `cb_person_cred_hist_length`.
 
 ### Impacto no desempenho
 
-| Métrica | Referência | Produção | Variação |
+| Métrica | Coorte independente antes | Mesma coorte depois | Variação |
 |---|---:|---:|---:|
-| Accuracy | 0,8114 | 0,8498 | +0,0383 |
-| Precision | 0,5487 | 0,6443 | +0,0956 |
-| Recall | 0,7771 | 0,6823 | -0,0948 |
-| F1-score | 0,6432 | 0,6627 | +0,0195 |
-| ROC AUC | 0,8712 | 0,8662 | -0,0050 |
+| Accuracy | 0,8047 | 0,8375 | 0,0328 |
+| Precision | 0,5359 | 0,6132 | 0,0773 |
+| Recall | 0,7828 | 0,6905 | -0,0923 |
+| F1-score | 0,6362 | 0,6496 | 0,0134 |
+| ROC AUC | 0,8729 | 0,8665 | -0,0064 |
 
-Embora a acurácia tenha aumentado, o recall caiu aproximadamente 9,48 pontos percentuais. Em risco de crédito, essa queda indica que o modelo deixou de identificar uma parcela maior dos clientes inadimplentes.
+O recall caiu 9,2264 pontos percentuais na mesma coorte independente. A referência de distribuição continua separada da referência de desempenho.
 
 ## Etapa 3 — Observabilidade e monitoramento
 
@@ -285,12 +285,12 @@ O pipeline consolida:
 - total de predições;
 - proporção de predições nulas;
 - proporção de classificações positivas;
-- confiança média;
+- confiança média na classe prevista e probabilidade média de inadimplência;
 - latência por registro em p50, p95 e p99;
 - quantidade de variáveis e testes com drift;
 - recall e variação do recall;
 - ROC AUC em produção;
-- duração total do pipeline.
+- duração do pipeline até a coleta de métricas, antes da exportação final.
 
 As métricas também são exportadas no formato de exposição de texto do Prometheus.
 
@@ -312,9 +312,9 @@ Predições processadas: 8.000
 Predições nulas: 0%
 Variáveis com drift: 3
 Testes com alerta de drift: 6
-Recall em produção: 0,6823
-Variação do recall: -0,0948
-ROC AUC em produção: 0,8662
+Recall em produção: 0,6905
+Variação do recall: -0,0923
+ROC AUC em produção: 0,8665
 Alertas ativos: 2
 ```
 
@@ -475,7 +475,7 @@ uv build
 Resultado atual:
 
 ```text
-20 testes aprovados
+28 testes aprovados
 ```
 
 ## Scripts auxiliares
@@ -493,7 +493,7 @@ uv run python scripts/run_monitoring.py
 - `v0.1.0`: validação de dados, contrato Pandera e modelo baseline.
 - `v0.2.0`: simulação de produção, detecção de drift e relatório Evidently.
 - `v0.3.0`: observabilidade, logs estruturados, métricas Prometheus, alertas e dashboard.
-- `v0.4.0` (próxima versão): governança, LGPD, causalidade e roteiro STAR.
+- `v0.4.0`: governança, LGPD, causalidade e roteiro STAR.
 
 ## Próximas etapas
 
@@ -507,3 +507,49 @@ uv run python scripts/run_monitoring.py
 **Rafael Alves da Costa**
 
 GitHub: [RafaExMachina](https://github.com/RafaExMachina)
+
+## Correções de rigor experimental
+
+### 1. Concept Drift controlado
+
+```bash
+uv run python -m home_credit_observability.cli concept
+```
+
+O cenário sintético é independente do dataset OpenML e utiliza um mecanismo conhecido:
+
+```text
+z = (juros - 14)/3,5 + (comprometimento - 0,30)/0,15
+P(Y=1|X) antes  = sigmoid(-1 + 1,8*z)
+P(Y=1|X) depois = sigmoid(-1 - 1,8*z)
+```
+
+A reversão é deliberadamente intensa para fins didáticos; não é uma hipótese sobre crédito real. Um modelo é treinado em outra coorte sintética. Na avaliação, as entradas são idênticas antes/depois e os mesmos uniformes geram os resultados pelos dois mecanismos. Portanto, P(X) empírica é preservada e P(Y|X) muda por construção, sem inverter rótulos arbitrariamente.
+
+Em 8.000 registros e semente 42: zero testes de drift positivos nas entradas; ROC AUC 0,8953 antes e 0,0965 depois; recall 0,8125 antes e 0,0711 depois. A prevalência foi 37,875% e 37,775%, respectivamente: diferenças finitas de amostragem não são a evidência de Concept Drift. McNemar exato compara os erros pareados; valores extremamente pequenos podem aparecer como zero por limite numérico, não como probabilidade matematicamente nula.
+
+Artefatos em `reports/concept/`: `concept_report.html`, `evidently_inputs.html`, `evidently_inputs.json`, `concept_summary.json`, `statistical_drift_results.json`, `before.parquet`, `after.parquet` e `synthetic_model.joblib`. O JSON documenta o mecanismo, as métricas, o teste pareado e os alertas de desempenho. A ausência de Data Drift no Evidently é esperada neste cenário. A queda de métricas sozinha não comprovaria Concept Drift em dados reais.
+
+### 2. Coorte independente e comparação pareada
+
+A divisão estratificada com semente 42 reserva 30% dos dados limpos para produção antes de qualquer fitting. Dos 32.409 registros, 22.686 ficam no desenvolvimento e 9.723 na coorte de produção. Dentro do desenvolvimento, o baseline mantém sua divisão 80/20 (18.148 treino e 4.538 teste). A coorte reservada não entra no treino nem na validação interna.
+
+`reference.parquet` representa a distribuição de desenvolvimento para drift. `production_source.parquet` guarda a coorte independente. `split_manifest.json` permite verificar que os índices de origem não se sobrepõem. Produção tem 8.000 registros selecionados sem reposição. `production_before.parquet` e `production_drifted.parquet` guardam os mesmos registros antes/depois.
+
+No JSON de desempenho, `reference` significa avaliação da coorte independente antes da transformação. No Evidently, referência significa distribuição de desenvolvimento. O dashboard usa os rótulos Antes/Depois para evitar confusão.
+
+**Execute `train` novamente após aplicar a correção.** O pipeline recusa executar sem a nova coorte. Os números anteriores à correção não devem ser usados na apresentação.
+
+### 3. Política de drift idêntica no Evidently e nos alertas
+
+O Evidently usa sete features numéricas, excluindo alvo e saídas do modelo. Um teste registrado chama os mesmos detectores do pipeline: PSI >= 0,25 OU KS p < 0,05. O limiar global é 1/7, ou seja, pelo menos uma feature com drift.
+
+O score mostrado no Evidently é normalizado: max(PSI/0,25, -log10(p)/-log10(0,05)). Ele não é o PSI bruto nem um valor-p. Os valores individuais originais ficam em `statistical_drift_results.json`. KS é exploratório, sem ajuste por comparações múltiplas; alertas exigem investigação. O adaptador foi testado com a versão Evidently fixada no lockfile e precisa de revisão quando ela for atualizada.
+
+### 4. Métricas e casos de borda
+
+- p50/p95/p99 usam uma chamada por registro, após warm-up, com modelo carregado; incluem pré-processamento, mas não HTTP, rede ou carregamento. A medição de 8.000 chamadas demora mais que a antiga medição em lotes.
+- `prediction_confidence_mean` representa probabilidade da classe prevista; `prediction_default_probability_mean` representa probabilidade média de inadimplência.
+- `pipeline_duration_before_export_seconds` mede até a coleta, não todo o custo de escrita dos artefatos.
+- PSI de referência constante usa três categorias (abaixo/igual/acima), suavização e renormalização, gerando valor finito e JSON válido.
+- `sample_size` maior que a coorte é rejeitado com mensagem clara; não há reposição para criar duplicatas que o contrato bloquearia.

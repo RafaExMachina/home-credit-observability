@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Modelo | Regressão Logística |
-| Versão documentada | 0.3.0 |
+| Versão documentada | 0.4.0 + correções da auditoria |
 | Problema | classificação binária de risco de inadimplência |
 | Dataset | OpenML 43454 |
 | Alvo | `loan_status` |
@@ -28,16 +28,15 @@ modelo de risco. O artefato não está aprovado para concessão real de crédito
 
 ## Desempenho
 
-| Métrica | Baseline de teste | Referência pontuada | Produção simulada |
+| Métrica | Baseline de teste | Coorte independente antes | Mesma coorte depois |
 |---|---:|---:|---:|
-| Accuracy | 0,8059 | 0,8114 | 0,8498 |
-| Precision | 0,5389 | 0,5487 | 0,6443 |
-| Recall | 0,7821 | 0,7771 | 0,6823 |
-| F1-score | 0,6381 | 0,6432 | 0,6627 |
-| ROC AUC | 0,8716 | 0,8712 | 0,8662 |
+| Accuracy | 0,8074 | 0,8047 | 0,8375 |
+| Precision | 0,5408 | 0,5359 | 0,6132 |
+| Recall | 0,7946 | 0,7828 | 0,6905 |
+| F1-score | 0,6436 | 0,6362 | 0,6496 |
+| ROC AUC | 0,8792 | 0,8729 | 0,8665 |
 
-A produção simulada apresentou queda de aproximadamente 9,48 pontos percentuais
-no recall. A acurácia maior não compensa a redução na detecção de inadimplentes.
+Queda de recall: 9,2264 pontos percentuais. Comparação pareada fora do treino. O cenário sintético de Concept Drift é documentado separadamente no README.
 
 ## Riscos e limitações
 

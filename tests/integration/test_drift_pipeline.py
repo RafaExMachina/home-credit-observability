@@ -40,6 +40,8 @@ def test_drift_pipeline_creates_expected_artifacts(tmp_path: Path, monkeypatch) 
     reference = _dataset()
     reference_path = tmp_path / "reference.parquet"
     model_path = tmp_path / "model.joblib"
+    source_path = tmp_path / "production_source.parquet"
+    _dataset(400).iloc[200:].to_parquet(source_path, index=False)
     reference.to_parquet(reference_path, index=False)
     model, _ = train_baseline(reference)
 
@@ -59,6 +61,7 @@ def test_drift_pipeline_creates_expected_artifacts(tmp_path: Path, monkeypatch) 
     result = run_drift_pipeline(
         sample_size=100,
         reference_path=reference_path,
+        production_source_path=source_path,
         model_path=model_path,
         production_dir=tmp_path / "production",
         report_dir=tmp_path / "reports",

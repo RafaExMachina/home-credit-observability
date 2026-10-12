@@ -41,15 +41,27 @@ class PSIDetector:
         quantiles = np.linspace(0.0, 1.0, self.bins + 1)
         edges = np.unique(np.quantile(reference_values, quantiles))
         if edges.size < 2:
-            statistic = 0.0 if np.all(current_values == edges[0]) else float("inf")
+            # Categorias: abaixo, igual e acima do valor constante de referência.
+            # Suavização evita infinito sem perder evidência da mudança.
+            constant = edges[0]
+            ref_count = np.array([0, reference_values.size, 0])
+            cur_count = np.array(
+                [
+                    np.sum(current_values < constant),
+                    np.sum(current_values == constant),
+                    np.sum(current_values > constant),
+                ]
+            )
         else:
             edges[0], edges[-1] = -np.inf, np.inf
             ref_count, _ = np.histogram(reference_values, bins=edges)
             cur_count, _ = np.histogram(current_values, bins=edges)
-            epsilon = 1e-6
-            ref_pct = np.clip(ref_count / reference_values.size, epsilon, None)
-            cur_pct = np.clip(cur_count / current_values.size, epsilon, None)
-            statistic = float(np.sum((cur_pct - ref_pct) * np.log(cur_pct / ref_pct)))
+        epsilon = 1e-6
+        ref_pct = np.clip(ref_count / reference_values.size, epsilon, None)
+        cur_pct = np.clip(cur_count / current_values.size, epsilon, None)
+        ref_pct /= ref_pct.sum()
+        cur_pct /= cur_pct.sum()
+        statistic = float(np.sum((cur_pct - ref_pct) * np.log(cur_pct / ref_pct)))
 
         return DriftResult(
             feature=feature,

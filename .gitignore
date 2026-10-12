@@ -43,6 +43,9 @@ reports/logs/*
 !reports/data_quality/.gitkeep
 !reports/logs/.gitkeep
 
+# Experimento sintético de Concept Drift
+reports/concept/
+
 # Editores e sistema operacional
 .vscode/
 .idea/

@@ -10,8 +10,8 @@ a redução do recall do modelo?
 - PSI e Kolmogorov-Smirnov detectaram drift em `person_income`, `loan_int_rate` e
   `loan_percent_income`;
 - seis dos quatorze testes estatísticos sinalizaram mudança;
-- o recall caiu de 0,7771 para 0,6823;
-- o ROC AUC caiu de 0,8712 para 0,8662;
+- o recall caiu de 0,7828 para 0,6905;
+- o ROC AUC caiu de 0,8729 para 0,8665;
 - o cenário de produção foi criado por transformação controlada dos dados.
 
 ## Hipótese causal
@@ -63,3 +63,7 @@ renda seriam a causa em produção real.
 Manter revisão humana para casos adversos, elevar monitoramento dos três atributos,
 investigar segmentos afetados e comparar recalibração com retreinamento. Nenhuma
 ação deve ser tomada apenas porque uma feature apresentou drift.
+
+## Experimento adicional de Concept Drift
+
+O comando `concept` altera um mecanismo probabilístico conhecido em dados inteiramente sintéticos, preservando exatamente as entradas da avaliação. A mudança de P(Y|X) é conhecida por construção. Isso não atribui a degradação do OpenML a uma causa econômica e não demonstra causalidade em decisões reais. No cenário OpenML, a comparação usa a mesma coorte independente antes/depois da transformação.
