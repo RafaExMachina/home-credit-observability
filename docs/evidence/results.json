@@ -1,0 +1,304 @@
+{
+  "date": "2026-10-12",
+  "source_commit": "fc222e2992f4b00c603b4c88114246db1dc05725",
+  "note": "Capturas e resultados do reteste: código idêntico ao commit indicado; métricas agregadas, sem registros individuais. Latência depende do ambiente.",
+  "sample_size": 8000,
+  "random_state": 42,
+  "baseline": {
+    "accuracy": 0.8074041427941825,
+    "precision": 0.5407813570939,
+    "recall": 0.7945619335347432,
+    "f1_score": 0.6435562805872757,
+    "roc_auc": 0.8791563511576805,
+    "confusion_matrix": [
+      [
+        2875,
+        670
+      ],
+      [
+        204,
+        789
+      ]
+    ],
+    "model": "logistic_regression",
+    "train_rows": 18148,
+    "test_rows": 4538,
+    "positive_rate_train": 0.2187017853206965,
+    "positive_rate_test": 0.21881886293521374
+  },
+  "data_drift": {
+    "reference": {
+      "accuracy": 0.80475,
+      "precision": 0.5358964299725383,
+      "recall": 0.7828080229226361,
+      "f1_score": 0.6362366092221705,
+      "roc_auc": 0.8729358518915526,
+      "confusion_matrix": [
+        [
+          5072,
+          1183
+        ],
+        [
+          379,
+          1366
+        ]
+      ]
+    },
+    "production": {
+      "accuracy": 0.8375,
+      "precision": 0.6132315521628499,
+      "recall": 0.6905444126074498,
+      "f1_score": 0.6495956873315364,
+      "roc_auc": 0.8665028550225722,
+      "confusion_matrix": [
+        [
+          5495,
+          760
+        ],
+        [
+          540,
+          1205
+        ]
+      ]
+    },
+    "delta": {
+      "accuracy": 0.03275000000000006,
+      "precision": 0.07733512219031158,
+      "recall": -0.09226361031518626,
+      "f1_score": 0.013359078109365874,
+      "roc_auc": -0.006432996868980467
+    },
+    "evaluation_protocol": "paired_independent_production_cohort"
+  },
+  "concept_drift": {
+    "scenario": "synthetic_concept_drift",
+    "features_exactly_equal": true,
+    "feature_drift_tests_positive": 0,
+    "conditional_probability_mean_absolute_change": 0.5793452170480884,
+    "positive_rate_before": 0.37875,
+    "positive_rate_after": 0.37775,
+    "paired_error_test": {
+      "method": "exact_mcnemar_binomial",
+      "worsened": 4546,
+      "improved": 60,
+      "p_value": 0.0
+    },
+    "performance": {
+      "reference": {
+        "accuracy": 0.81075,
+        "precision": 0.7224178403755869,
+        "recall": 0.8125412541254126,
+        "f1_score": 0.7648337993165579,
+        "roc_auc": 0.8952973285256093,
+        "confusion_matrix": [
+          [
+            4024,
+            946
+          ],
+          [
+            568,
+            2462
+          ]
+        ]
+      },
+      "production": {
+        "accuracy": 0.25,
+        "precision": 0.06308685446009389,
+        "recall": 0.07114493712772998,
+        "f1_score": 0.06687402799377916,
+        "roc_auc": 0.09654857282034333,
+        "confusion_matrix": [
+          [
+            1785,
+            3193
+          ],
+          [
+            2807,
+            215
+          ]
+        ]
+      },
+      "delta": {
+        "accuracy": -0.56075,
+        "precision": -0.659330985915493,
+        "recall": -0.7413963169976826,
+        "f1_score": -0.6979597713227788,
+        "roc_auc": -0.7987487557052659
+      },
+      "evaluation_protocol": "paired_synthetic_conditional_shift"
+    },
+    "alerts": [
+      {
+        "code": "MODEL_RECALL_DEGRADATION",
+        "severity": "critical",
+        "message": "A queda de recall ultrapassou o limite permitido.",
+        "observed": -0.7413963169976826,
+        "threshold": -0.05
+      },
+      {
+        "code": "MODEL_ROC_AUC_LOW",
+        "severity": "critical",
+        "message": "O ROC AUC de produção está abaixo do mínimo permitido.",
+        "observed": 0.09654857282034333,
+        "threshold": 0.8
+      }
+    ],
+    "training_metrics": {
+      "accuracy": 0.8141666666666667,
+      "precision": 0.7228682170542635,
+      "recall": 0.8233995584988962,
+      "f1_score": 0.7698658410732714,
+      "roc_auc": 0.9003164977791962,
+      "confusion_matrix": [
+        [
+          1208,
+          286
+        ],
+        [
+          160,
+          746
+        ]
+      ],
+      "model": "logistic_regression",
+      "train_rows": 9600,
+      "test_rows": 2400,
+      "positive_rate_train": 0.3775,
+      "positive_rate_test": 0.3775
+    },
+    "random_state": 42,
+    "evaluation_rows": 8000,
+    "mechanism": "logit(p): -1 + 1.8*z -> -1 - 1.8*z",
+    "limitation": "Cenário sintético; não demonstra causalidade em crédito real."
+  },
+  "health": {
+    "prediction_count": 8000.0,
+    "prediction_null_ratio": 0.0,
+    "prediction_positive_ratio": 0.245625,
+    "prediction_default_probability_mean": 0.33862446898156573,
+    "prediction_confidence_mean": 0.7824931304870931,
+    "prediction_latency_samples": 8000.0,
+    "prediction_latency_p50_ms": 13.626184999338875,
+    "prediction_latency_p95_ms": 16.782639999837556,
+    "prediction_latency_p99_ms": 21.34068012084756,
+    "drifted_features_count": 3.0,
+    "drift_alerts_count": 6.0,
+    "model_recall": 0.6905444126074498,
+    "model_recall_delta": -0.09226361031518626,
+    "model_roc_auc": 0.8665028550225722,
+    "pipeline_duration_before_export_seconds": 114.36958486399999
+  },
+  "statistical_drift": [
+    {
+      "feature": "person_age",
+      "method": "psi",
+      "statistic": 0.0011809350505249286,
+      "threshold": 0.25,
+      "drift_detected": false,
+      "p_value": null
+    },
+    {
+      "feature": "person_age",
+      "method": "kolmogorov_smirnov",
+      "statistic": 0.01090296879132513,
+      "threshold": 0.05,
+      "drift_detected": false,
+      "p_value": 0.47967241042185216
+    },
+    {
+      "feature": "person_income",
+      "method": "psi",
+      "statistic": 0.2710881269799498,
+      "threshold": 0.25,
+      "drift_detected": true,
+      "p_value": null
+    },
+    {
+      "feature": "person_income",
+      "method": "kolmogorov_smirnov",
+      "statistic": 0.24072183284845278,
+      "threshold": 0.05,
+      "drift_detected": true,
+      "p_value": 4.1771296246580475e-302
+    },
+    {
+      "feature": "person_emp_length",
+      "method": "psi",
+      "statistic": 0.001695977226249831,
+      "threshold": 0.25,
+      "drift_detected": false,
+      "p_value": null
+    },
+    {
+      "feature": "person_emp_length",
+      "method": "kolmogorov_smirnov",
+      "statistic": 0.010815692223633544,
+      "threshold": 0.05,
+      "drift_detected": false,
+      "p_value": 0.5081655047386676
+    },
+    {
+      "feature": "loan_amnt",
+      "method": "psi",
+      "statistic": 0.002030597288772325,
+      "threshold": 0.25,
+      "drift_detected": false,
+      "p_value": null
+    },
+    {
+      "feature": "loan_amnt",
+      "method": "kolmogorov_smirnov",
+      "statistic": 0.010664804284580831,
+      "threshold": 0.05,
+      "drift_detected": false,
+      "p_value": 0.5083104492252092
+    },
+    {
+      "feature": "loan_int_rate",
+      "method": "psi",
+      "statistic": 2.6290813928570085,
+      "threshold": 0.25,
+      "drift_detected": true,
+      "p_value": null
+    },
+    {
+      "feature": "loan_int_rate",
+      "method": "kolmogorov_smirnov",
+      "statistic": 0.3409821751559267,
+      "threshold": 0.05,
+      "drift_detected": true,
+      "p_value": 0.0
+    },
+    {
+      "feature": "loan_percent_income",
+      "method": "psi",
+      "statistic": 0.27213007508809156,
+      "threshold": 0.25,
+      "drift_detected": true,
+      "p_value": null
+    },
+    {
+      "feature": "loan_percent_income",
+      "method": "kolmogorov_smirnov",
+      "statistic": 0.1958583487613506,
+      "threshold": 0.05,
+      "drift_detected": true,
+      "p_value": 3.052006198689683e-199
+    },
+    {
+      "feature": "cb_person_cred_hist_length",
+      "method": "psi",
+      "statistic": 0.0014267216617363495,
+      "threshold": 0.25,
+      "drift_detected": false,
+      "p_value": null
+    },
+    {
+      "feature": "cb_person_cred_hist_length",
+      "method": "kolmogorov_smirnov",
+      "statistic": 0.010753074583443434,
+      "threshold": 0.05,
+      "drift_detected": false,
+      "p_value": 0.4976079329840507
+    }
+  ]
+}

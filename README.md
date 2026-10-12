@@ -1,204 +1,206 @@
 # Credit Risk Observability
 
-Projeto de observabilidade, qualidade de dados e monitoramento de drift para um modelo de classificação de risco de crédito.
+**Qualidade de dados, detecção de drift e governança para um modelo de risco de crédito.**
 
-O projeto utiliza o **Credit Risk Dataset**, disponibilizado publicamente no OpenML com o ID [`43454`](https://www.openml.org/d/43454). O download não exige conta nem token do Kaggle.
+Projeto acadêmico da Fase 4 de Machine Learning Engineering: uma camada de sustentação que bloqueia dados inválidos, identifica mudanças de distribuição e torna a degradação do modelo visível por relatórios, métricas e alertas.
 
-## Objetivo
+O cenário central mostra por que uma acurácia maior pode esconder um problema: depois da simulação de Data Drift, a acurácia sobe, mas o recall cai **9,23 pontos percentuais**. Um segundo experimento demonstra **Concept Drift com entradas exatamente iguais**, mostrando o limite de monitorar apenas a distribuição das features.
 
-Construir uma camada de sustentação e confiabilidade para um modelo de Credit Scoring, contemplando:
+| Estado do projeto | Evidência |
+|---|---|
+| Versão do pacote | `0.4.0` |
+| Validação automatizada | **28 testes aprovados**, Ruff, formatação, Mypy e build |
+| Dataset real | OpenML 43454; **32.409 registros** após limpeza |
+| Produção simulada | **8.000 registros**, reservados antes do treinamento |
+| Data Drift | **3 features afetadas**, 6 de 14 testes positivos |
+| Concept Drift | Zero testes de drift positivos nas entradas; ROC AUC **0,8953 → 0,0965** |
+| Vídeo STAR | Pendente; roteiro disponível |
 
-- validação e contratos de dados;
-- bloqueio de lotes inválidos;
-- treinamento de um modelo baseline;
-- simulação de dados de produção;
-- detecção estatística de Data Drift;
-- análise da degradação do modelo;
-- geração de relatório visual com Evidently;
-- logs estruturados de execução e alertas;
-- métricas operacionais no formato Prometheus;
-- dashboard HTML interativo;
-- plano de privacidade e proteção de dados;
-- governança do modelo e análise causal;
-- roteiro de apresentação pelo método STAR;
-- testes automatizados;
-- documentação e governança.
+> **Escopo:** o sistema monitora um modelo acadêmico. Não concede crédito real. A execução é por lote, iniciada pela CLI; não há serviço de monitoramento continuamente agendado. As políticas de segurança e LGPD são propostas documentadas, não certificação de conformidade em produção.
 
-## Dataset
+![Comparação das métricas antes e depois: no Data Drift a acurácia aumenta e o recall cai; no Concept Drift sintético ROC AUC e recall caem com entradas iguais.](docs/images/drift-comparison.png)
 
-O dataset possui aproximadamente 32 mil registros e representa solicitações de crédito.
+*Figura 1 — Resultados reais dos dois experimentos executados, com 8.000 registros por cenário e semente 42. O cenário de Concept Drift é inteiramente sintético e deliberadamente intenso. Fonte: [métricas agregadas](docs/evidence/results.json).*
 
-A variável-alvo é `loan_status`:
+## Sumário
 
-- `0`: cliente não inadimplente;
-- `1`: cliente inadimplente.
+- [1. Resumo executivo e requisitos](#resumo)
+- [2. Reprodução do projeto](#reproducao)
+- [3. Arquitetura e desenho de avaliação](#arquitetura)
+- [4. Qualidade de dados e baseline](#qualidade)
+- [5. Data Drift e impacto no desempenho](#data-drift)
+- [6. Concept Drift controlado](#concept-drift)
+- [7. Observabilidade e evidências visuais](#observabilidade)
+- [8. Governança, privacidade e causalidade](#governanca)
+- [9. Validação técnica](#validacao)
+- [10. Artefatos e documentação](#artefatos)
+- [11. Troubleshooting](#troubleshooting)
+- [12. Vídeo STAR e próximos passos](#video)
 
-```text
-OpenML Dataset ID: 43454
-Registros validados: 32.409
-Problema: classificação binária financeira
-```
+<a id="resumo"></a>
 
-## Tecnologias
+## 1. Resumo executivo e requisitos
 
-- Python 3.12
-- uv
-- pandas
-- scikit-learn
-- Pandera
-- SciPy
-- Evidently
-- Plotly
-- Prometheus Client
-- PyArrow
-- pytest
-- Ruff
-- joblib
+Uma fintech pode perder capacidade de identificar inadimplência mesmo com o pipeline executando normalmente. Este projeto investiga três perguntas: os dados respeitam o contrato? As distribuições mudaram? O modelo continua identificando a classe de risco?
 
-## Arquitetura do pipeline
+A solução combina **Pandera**, **scikit-learn**, **PSI e Kolmogorov–Smirnov**, **Evidently**, **Plotly**, logs JSONL e métricas exportadas em formato Prometheus. A decisão de resposta é documentada: um alerta pede investigação e revisão; não promove um novo modelo automaticamente.
 
-```text
-OpenML 43454
-      |
-      v
-Limpeza determinística
-      |
-      v
-Contrato de dados Pandera
-      |
-      +----------------------+
-      |                      |
-      v                      v
-Modelo baseline       Bloqueio de lote inválido
-      |
-      v
-Dataset de referência
-      |
-      v
-Simulação de produção
-      |
-      v
-Predições do modelo
-      |
-      v
-PSI + Kolmogorov-Smirnov
-      |
-      v
-Relatório Evidently + comparação de desempenho
-      |
-      v
-Logs + métricas + políticas de alerta
-      |
-      v
-Dashboard Plotly + exposição Prometheus
-      |
-      v
-Governança LGPD + análise causal + model card
-```
+### Matriz de atendimento à Fase 4
 
-## Estrutura do projeto
+| Requisito | Implementação / evidência | Situação |
+|---|---|---|
+| Modelo binário financeiro e pelo menos 5.000 amostras | Regressão Logística; OpenML 43454 com 32.409 registros limpos | Implementado |
+| Contrato com pelo menos três regras rígidas | [Schema Pandera](src/home_credit_observability/validation/schema.py): domínio, faixa, nulidade e duplicatas | Implementado |
+| Bloquear lote com erros | Comando `validate-invalid`; quatro violações interceptadas | Demonstrado |
+| Separar referência e produção | Reserva estratificada antes do fitting; comparação pareada fora do treino | Demonstrado |
+| Alterar ao menos duas variáveis | Renda, juros e comprometimento da renda | Demonstrado |
+| Detecção estatística e relatório HTML | PSI + KS; Evidently com política alinhada aos alertas | Demonstrado |
+| Data Drift e Concept Drift | Cenário OpenML transformado e experimento sintético condicional separado | Demonstrado |
+| Observabilidade e logs | Dashboard Plotly, JSONL, Parquet de predições, JSON de drift e arquivo `.prom` | Implementado |
+| Governança e análise causal no README | [Seção 8](#governanca) e documentos complementares | Documentado |
+| Histórico organizado | Commits por etapa e correções específicas | Disponível no Git |
+| Vídeo STAR de até cinco minutos | [Roteiro](governance/video_star_script.md); link ainda pendente | **Pendente** |
 
-```text
-.
-├── artifacts/
-│   ├── metrics/
-│   └── models/
-├── configs/
-├── data/
-│   ├── production/
-│   ├── raw/
-│   ├── reference/
-│   └── samples/
-├── governance/
-│   ├── causal_analysis.md
-│   ├── data_dictionary.md
-│   ├── lgpd_privacy_plan.md
-│   ├── model_card.md
-│   ├── monitoring_policy.md
-│   └── video_star_script.md
-├── reports/
-│   ├── data_quality/
-│   ├── drift/
-│   ├── logs/
-│   └── monitoring/
-├── scripts/
-├── src/
-│   └── home_credit_observability/
-│       ├── data/
-│       ├── drift/
-│       ├── features/
-│       ├── models/
-│       ├── observability/
-│       ├── pipelines/
-│       ├── reporting/
-│       └── validation/
-└── tests/
-    ├── integration/
-    └── unit/
-```
+Os cinco critérios da rubrica são validação de dados (25%), drift (25%), observabilidade/logs (20%), governança (15%) e vídeo (15%). Esta matriz localiza as evidências; não representa uma nota atribuída pela banca.
 
-## Princípios de projeto
+<a id="reproducao"></a>
 
-A implementação utiliza princípios SOLID:
+## 2. Reprodução do projeto
 
-- **Single Responsibility Principle:** validação, simulação, predição, detecção, logs, métricas, alertas e dashboards possuem componentes separados.
-- **Open/Closed Principle:** novos detectores, exportadores e políticas podem ser adicionados sem alterar os componentes existentes.
-- **Liskov Substitution Principle:** implementações compatíveis com os protocolos podem ser substituídas.
-- **Interface Segregation Principle:** os contratos definem somente as operações necessárias para cada responsabilidade.
-- **Dependency Inversion Principle:** os serviços dependem de abstrações e recebem colaboradores por injeção de dependência.
+### Pré-requisitos
 
-Os módulos, classes, métodos e funções implementados possuem docstrings que documentam suas responsabilidades.
+Git, `uv` e Python compatível com o projeto (validado com Python 3.12.13). Internet é necessária para instalar dependências e baixar o dataset pela primeira vez. O download OpenML não exige conta nem token Kaggle.
 
-## Instalação
+### Instalar
 
 ```bash
 git clone https://github.com/RafaExMachina/home-credit-observability.git
 cd home-credit-observability
 uv sync --locked
-uv run python --version
 ```
 
-## Etapa 1 — Validação de dados e modelo baseline
+O `uv.lock` versionado fixa o conjunto de dependências. Execute os comandos pela raiz do repositório.
 
-### Download e validação
+### Executar a demonstração completa
 
 ```bash
-uv run python -m home_credit_observability.cli download
+# 1. Baixar dados, validar, reservar a coorte e treinar o baseline
+uv run python -m home_credit_observability.cli train
+
+# 2. Confirmar o contrato e demonstrar o bloqueio
 uv run python -m home_credit_observability.cli validate
+uv run python -m home_credit_observability.cli validate-invalid
+
+# 3. Executar Data Drift, métricas, alertas e dashboard
+uv run python -m home_credit_observability.cli monitor
+
+# 4. Executar o experimento independente de Concept Drift
+uv run python -m home_credit_observability.cli concept
 ```
 
-Resultado esperado:
+`monitor` executa também o pipeline de Data Drift. O comando `drift` permite executar apenas essa análise. `concept` treina seu próprio modelo sintético e não depende do baseline OpenML.
 
-```text
-Contrato aprovado para 32,409 registros.
+O monitoramento mede 8.000 chamadas individuais de inferência e pode levar alguns minutos. Os comandos regeneram e sobrescrevem artefatos locais; preserve uma cópia se quiser comparar execuções.
+
+### Abrir os relatórios
+
+```bash
+uv run python -m http.server 8765 --bind 127.0.0.1 --directory reports
 ```
 
-### Teste com lote inválido
+| Relatório | Endereço local |
+|---|---|
+| Dashboard operacional | [monitoring/observability_dashboard.html](http://127.0.0.1:8765/monitoring/observability_dashboard.html) |
+| Data Drift — Evidently | [drift/evidently_drift_report.html](http://127.0.0.1:8765/drift/evidently_drift_report.html) |
+| Concept Drift — desempenho | [concept/concept_report.html](http://127.0.0.1:8765/concept/concept_report.html) |
+| Concept Drift — estabilidade das entradas | [concept/evidently_inputs.html](http://127.0.0.1:8765/concept/evidently_inputs.html) |
+
+<a id="arquitetura"></a>
+
+## 3. Arquitetura e desenho de avaliação
+
+```mermaid
+flowchart TD
+    A[OpenML 43454] --> B[Limpeza determinística]
+    B --> C[Contrato Pandera]
+    C -->|Falha| D[Bloquear lote e registrar violações]
+    C -->|Aprovado| E[Divisão estratificada antes do fitting]
+    E --> F[Desenvolvimento: 22.686 registros]
+    E --> G[Produção reservada: 9.723 registros]
+    F --> H[Treino: 18.148 / teste interno: 4.538]
+    H --> I[Pipeline scikit-learn persistido]
+    F --> J[Referência de distribuição]
+    G --> K[Selecionar 8.000 sem reposição]
+    K --> L[Mesma coorte: antes e depois da transformação]
+    I --> M[Predições pareadas]
+    L --> M
+    J --> N[PSI e KS / Evidently]
+    L --> N
+    M --> O[Desempenho, logs e alertas]
+    N --> O
+    O --> P[Dashboard Plotly e métricas Prometheus]
+    Q[Experimento sintético independente] --> R[Entradas iguais / mudança de P do alvo dado X]
+    R --> S[Concept Drift: desempenho e testes pareados]
+```
+
+### Separação das coortes
+
+A divisão estratificada usa semente 42. A reserva de produção ocorre **antes de qualquer fitting**, com 30% dos registros. Dentro dos 70% de desenvolvimento, `train_baseline` mantém uma divisão 80/20 para treino e teste interno.
+
+| Conjunto | Registros | Uso |
+|---|---:|---|
+| Dados limpos | 32.409 | Origem da divisão |
+| Desenvolvimento | 22.686 | Treino, teste interno e referência de distribuição |
+| Fitting do modelo | 18.148 | Ajuste do pré-processamento e classificador |
+| Teste interno | 4.538 | Métricas do baseline fora do fitting |
+| Produção reservada | 9.723 | Não participa do desenvolvimento |
+| Coorte de demonstração | 8.000 | Avaliação pareada antes/depois |
+
+`split_manifest.json` registra os índices de origem dos conjuntos e permite confirmar sobreposição zero. A coorte avaliada é selecionada sem reposição da reserva; transformar seus atributos não a faz participar do treino.
+
+### Duas referências com finalidades distintas
+
+**Distribuição:** `reference.parquet` contém o desenvolvimento e é comparado com a produção no PSI, KS e Evidently.
+
+**Desempenho:** `production_before.parquet` contém a coorte independente antes da transformação. Ela é comparada com os mesmos registros em `production_drifted.parquet`. No JSON, a chave `reference` de desempenho significa esse estado inicial; o dashboard usa **Antes/Depois**.
+
+Os módulos separam contratos, preparação, treinamento, simulação, inferência, detecção e apresentação. Protocolos e injeção de colaboradores permitem trocar detectores, logger e exportadores sem concentrar tudo na CLI.
+
+<a id="qualidade"></a>
+
+## 4. Qualidade de dados e baseline
+
+### Dataset
+
+O repositório se chama `home-credit-observability`, mas usa o **Credit Risk Dataset do [OpenML 43454](https://www.openml.org/d/43454)**. A fonte efetiva e as colunas são documentadas; Home Credit era uma opção de dataset do desafio, não uma obrigação.
+
+O alvo é `loan_status`: `0` representa não inadimplente e `1`, inadimplente. Após limpeza determinística, 32.409 registros passam pelo contrato. A limpeza é a preparação da referência histórica; o lote inválido demonstrativo é enviado diretamente ao contrato e bloqueado.
+
+### Contrato de dados
+
+| Regra | Condição |
+|---|---|
+| Idade | Entre 18 e 100, sem nulos |
+| Renda | Maior que zero, sem nulos |
+| Empréstimo | Valor maior que zero, sem nulos |
+| Comprometimento da renda | Entre 0 e 1, sem nulos |
+| Alvo | Inteiro no domínio `{0, 1}` |
+| Categorias | Domínios explícitos para moradia, finalidade, grade e histórico |
+| Duplicatas / estrutura | Sem linhas inteiramente duplicadas; schema estrito |
+
+Tempo de emprego e juros admitem nulos por serem imputáveis; valores presentes precisam respeitar seus domínios. O mínimo padrão da referência é 5.000 linhas; a validação da produção aceita lotes menores.
 
 ```bash
 uv run python -m home_credit_observability.cli validate-invalid
 ```
 
-O lote propositalmente inválido contém violações como:
+O comando cria idade 150, renda negativa, alvo inválido e uma duplicata. A exceção `DataQualityError` interrompe a ingestão e grava `reports/data_quality/invalid_batch_failures.csv`. A CLI retorna sucesso porque **o bloqueio é o resultado esperado dessa demonstração**, não porque o lote foi aceito.
 
-- alvo fora do domínio binário;
-- renda negativa;
-- idade fora do intervalo permitido;
-- registro duplicado.
+### Modelo
 
-O contrato Pandera bloqueia a ingestão e gera um relatório com as violações.
+Pipeline scikit-learn com imputação, padronização, One-Hot e Regressão Logística com classes balanceadas. O pré-processamento é ajustado somente no fitting.
 
-### Treinamento do modelo
-
-```bash
-uv run python -m home_credit_observability.cli train
-```
-
-O modelo baseline utiliza Regressão Logística com pré-processamento numérico, imputação, padronização, codificação One-Hot, balanceamento de classes e divisão estratificada.
-
-### Métricas do baseline
-
-| Métrica | Resultado |
+| Métrica no teste interno | Resultado |
 |---|---:|
 | Accuracy | 0,8074 |
 | Precision | 0,5408 |
@@ -206,350 +208,273 @@ O modelo baseline utiliza Regressão Logística com pré-processamento numérico
 | F1-score | 0,6436 |
 | ROC AUC | 0,8792 |
 
-## Etapa 2 — Simulação e detecção de drift
+<a id="data-drift"></a>
 
-A Etapa 2 cria um dataset de produção com 8.000 registros e simula mudanças controladas na renda do cliente, na taxa de juros e no percentual da renda comprometido pelo empréstimo.
+## 5. Data Drift e impacto no desempenho
 
-```bash
-uv run python -m home_credit_observability.cli drift
-```
-
-Também é possível configurar a execução:
+### Simulação
 
 ```bash
-uv run python -m home_credit_observability.cli drift \
-  --sample-size 8000 \
-  --random-state 42
+uv run python -m home_credit_observability.cli drift --sample-size 8000 --random-state 42
 ```
 
-### Métodos estatísticos
+O simulador multiplica renda por **1,35**, acrescenta **3 pontos percentuais** à taxa de juros e recalcula a razão entre valor do empréstimo e renda. Os rótulos históricos permanecem iguais. Este é um cenário controlado de perturbação das entradas, não uma previsão econômica nem uma demonstração isolada de Concept Drift.
 
-O **Population Stability Index (PSI)** mede a intensidade da mudança entre as distribuições. O projeto considera drift severo quando `PSI >= 0,25`.
+### Política de detecção compartilhada
 
-O teste **Kolmogorov–Smirnov (KS)** compara duas distribuições numéricas. O drift é sinalizado quando `p-value < 0,05`.
+Para cada uma das sete features numéricas, há dois diagnósticos: **PSI ≥ 0,25** ou **KS com valor-p < 0,05** sinaliza drift. Dataset com drift significa pelo menos uma dessas features afetada.
 
-### Resultados da detecção
+O teste `project_psi_or_ks` registrado no Evidently chama os mesmos detectores do pipeline. A contagem exclui alvo e predições, e o limiar global é `1/7`. Portanto, o relatório, o JSON e o dashboard usam a mesma política.
 
-Foram executados 14 testes, correspondentes a sete variáveis numéricas analisadas por dois métodos. Seis testes sinalizaram drift e PSI e KS concordaram nas três variáveis afetadas:
+No Evidently, **Drift Score é um score normalizado**, não PSI bruto nem valor-p:
 
-| Variável | PSI | Resultado |
+```text
+max(PSI / 0,25, -log10(max(p, 1e-300)) / -log10(0,05))
+```
+
+Os valores originais continuam no JSON estatístico. KS é um diagnóstico exploratório sem ajuste por comparações múltiplas; alertas exigem investigação, especialmente em amostras grandes.
+
+| Feature | PSI | Diagnóstico |
 |---|---:|---|
 | `person_income` | 0,2711 | Drift |
 | `loan_int_rate` | 2,6291 | Drift |
 | `loan_percent_income` | 0,2721 | Drift |
 
-Permaneceram estáveis `person_age`, `person_emp_length`, `loan_amnt` e `cb_person_cred_hist_length`.
+As quatro demais features numéricas permaneceram sem sinal de drift nesse cenário. Foram **6 testes positivos de 14**, envolvendo **3 features de 7**; essa contagem não equivale ao número de políticas de alerta ativadas.
 
-### Impacto no desempenho
+### Comparação pareada
 
-| Métrica | Coorte independente antes | Mesma coorte depois | Variação |
+| Métrica | Antes | Depois | Variação |
 |---|---:|---:|---:|
-| Accuracy | 0,8047 | 0,8375 | 0,0328 |
-| Precision | 0,5359 | 0,6132 | 0,0773 |
-| Recall | 0,7828 | 0,6905 | -0,0923 |
-| F1-score | 0,6362 | 0,6496 | 0,0134 |
-| ROC AUC | 0,8729 | 0,8665 | -0,0064 |
+| Accuracy | 0,8047 | 0,8375 | +0,0328 |
+| Precision | 0,5359 | 0,6132 | +0,0773 |
+| Recall | 0,7828 | 0,6905 | −0,0923 |
+| F1-score | 0,6362 | 0,6496 | +0,0134 |
+| ROC AUC | 0,8729 | 0,8665 | −0,0064 |
 
-O recall caiu 9,2264 pontos percentuais na mesma coorte independente. A referência de distribuição continua separada da referência de desempenho.
+O recall mede a parcela de inadimplentes identificada. Sua queda de **9,23 pontos percentuais** revela deterioração que a acurácia maior não evidencia. A análise usa a mesma coorte independente e o mesmo modelo antes/depois.
 
-## Etapa 3 — Observabilidade e monitoramento
+<a id="concept-drift"></a>
 
-A Etapa 3 centraliza os resultados de drift, as métricas do modelo e os eventos operacionais em uma camada de monitoramento reproduzível.
-
-Execute o pipeline completo:
+## 6. Concept Drift controlado
 
 ```bash
-uv run python -m home_credit_observability.cli monitor
+uv run python -m home_credit_observability.cli concept --sample-size 8000 --random-state 42
 ```
 
-Também é possível configurar a amostra e a semente:
+O experimento usa dados financeiros **inteiramente sintéticos**, separados do OpenML. Um modelo é desenvolvido em 12.000 registros sintéticos, com 9.600 para fitting e 2.400 de teste interno. A avaliação usa uma outra coorte de 8.000 registros.
 
-```bash
-uv run python -m home_credit_observability.cli monitor \
-  --sample-size 8000 \
-  --random-state 42
+O mecanismo conhecido de geração do alvo muda:
+
+```text
+z = (juros − 14) / 3,5 + (comprometimento − 0,30) / 0,15
+P(Y=1|X) antes  = sigmoid(−1 + 1,8 × z)
+P(Y=1|X) depois = sigmoid(−1 − 1,8 × z)
 ```
 
-### Logs estruturados
+As features da avaliação ficam **exatamente iguais**. Os mesmos uniformes aleatórios são comparados às duas probabilidades para gerar os rótulos antes/depois. Assim, a mudança de `P(Y|X)` é conhecida por construção; não é uma inversão arbitrária de rótulos.
 
-Os eventos são persistidos em JSON Lines e incluem timestamp UTC, nível, nome do evento e atributos. Os principais eventos são:
+| Indicador | Antes | Depois |
+|---|---:|---:|
+| Accuracy | 0,8107 | 0,2500 |
+| Recall | 0,8125 | 0,0711 |
+| ROC AUC | 0,8953 | 0,0965 |
+| Prevalência do alvo | 37,875% | 37,775% |
+| Testes de Data Drift positivos nas entradas | 0 | 0 |
 
-- `monitoring_started`;
-- `monitoring_completed`;
-- `alert_triggered`.
+A ausência de Data Drift nesse relatório Evidently é **esperada**. O monitoramento supervisionado ativa `MODEL_RECALL_DEGRADATION` e `MODEL_ROC_AUC_LOW`. McNemar exato compara os erros pareados: 4.546 erros novos e 60 resolvidos. Um valor-p impresso como zero reflete limite numérico, não probabilidade matematicamente nula.
 
-### Métricas de saúde
+A reversão forte é didática; não afirma que relações reais de crédito se invertem dessa maneira. Em dados reais, queda de métricas sozinha não prova Concept Drift, e desempenho supervisionado depende de rótulos maturados. Aqui, os rótulos sintéticos estão disponíveis imediatamente.
 
-O pipeline consolida:
+<a id="observabilidade"></a>
 
-- total de predições;
-- proporção de predições nulas;
-- proporção de classificações positivas;
-- confiança média na classe prevista e probabilidade média de inadimplência;
-- latência por registro em p50, p95 e p99;
-- quantidade de variáveis e testes com drift;
-- recall e variação do recall;
-- ROC AUC em produção;
-- duração do pipeline até a coleta de métricas, antes da exportação final.
+## 7. Observabilidade e evidências visuais
 
-As métricas também são exportadas no formato de exposição de texto do Prometheus.
+### Dashboard operacional
 
-### Políticas de alerta
+![Captura do dashboard real com zero predições nulas, latência p95, PSI, desempenho pareado e dois alertas ativos.](docs/images/monitoring-dashboard.jpg)
 
-| Alerta | Severidade | Condição |
+*Figura 2 — Captura real do reteste de 12/10/2026. O p95 de 16,783 ms pertence ao ambiente desta captura, não é garantia de desempenho. O estado crítico é esperado: há drift e queda de recall no cenário simulado.*
+
+<details>
+<summary><strong>Ver captura completa do Evidently: três features com drift</strong></summary>
+
+![Relatório Evidently real mostrando Dataset Drift is detected e três de sete features afetadas.](docs/images/evidently-data-drift.jpg)
+
+*Figura 3 — O relatório detecta drift global em 3 de 7 features. O score normalizado mostrado na tabela usa a mesma política operacional descrita na seção 5.*
+
+</details>
+
+### Métricas e alertas
+
+| Política | Condição | Severidade |
 |---|---|---|
-| `PREDICTION_NULL_RATIO` | critical | proporção de predições nulas maior que zero |
-| `INFERENCE_LATENCY_P95` | warning | latência p95 maior que 200 ms |
-| `DATA_DRIFT_DETECTED` | warning | uma ou mais variáveis com drift |
-| `MODEL_RECALL_DEGRADATION` | critical | variação do recall menor que -0,05 |
-| `MODEL_ROC_AUC_LOW` | critical | ROC AUC menor que 0,80 |
+| `PREDICTION_NULL_RATIO` | Proporção nula > 0 | critical |
+| `INFERENCE_LATENCY_P95` | p95 > 200 ms | warning |
+| `DATA_DRIFT_DETECTED` | Uma ou mais features afetadas | warning |
+| `MODEL_RECALL_DEGRADATION` | Delta do recall < −0,05 | critical |
+| `MODEL_ROC_AUC_LOW` | ROC AUC < 0,80 | critical |
 
-### Resultado do cenário monitorado
+No cenário Data Drift, dois alertas ficam ativos: `DATA_DRIFT_DETECTED` e `MODEL_RECALL_DEGRADATION`. `critical` descreve degradação detectada, não falha de execução do pipeline.
 
-```text
-Status geral: critical
-Predições processadas: 8.000
-Predições nulas: 0%
-Variáveis com drift: 3
-Testes com alerta de drift: 6
-Recall em produção: 0,6905
-Variação do recall: -0,0923
-ROC AUC em produção: 0,8665
-Alertas ativos: 2
-```
+As métricas incluem volume, nulos, proporção positiva, probabilidades, confiança na classe prevista, p50/p95/p99, quantidade de features/testes afetados, recall, variação do recall e AUC.
 
-Alertas produzidos:
+**Latência:** uma chamada por registro após warm-up, com modelo já carregado; inclui pré-processamento e o serviço Python, sem HTTP, rede ou loading. `prediction_latency_samples` registra o total medido. `pipeline_duration_before_export_seconds` mede até a coleta, sem afirmar duração total da exportação.
 
-- `DATA_DRIFT_DETECTED`, com severidade `warning`;
-- `MODEL_RECALL_DEGRADATION`, com severidade `critical`.
+**Probabilidade e confiança:** `prediction_default_probability_mean` é a média de P(inadimplência); `prediction_confidence_mean` usa a probabilidade da classe prevista. Elas não são intercambiáveis.
 
-O estado global é `critical` porque a queda do recall ultrapassou o limite operacional definido.
+### Logs e persistência
 
-### Dashboard
+JSONL registra `monitoring_started`, `monitoring_completed` e `alert_triggered`, com timestamp UTC, nível e atributos. As predições ficam em Parquet e os resultados estatísticos, em JSON. O arquivo `.prom` é uma exportação de texto compatível com Prometheus, não um servidor de métricas em execução.
 
-O dashboard Plotly reúne indicadores de saúde, PSI por variável, comparação de desempenho e alertas ativos.
+Os artefatos do pipeline são sobrescritos por execução. Histórico por run_id, vinculação de versões/hashes e agendamento contínuo são evoluções possíveis, não capacidades já implantadas.
 
-Para servi-lo localmente:
+### Proveniência das figuras
+
+As figuras foram obtidas de uma execução completa cujo código corresponde ao commit indicado em [results.json](docs/evidence/results.json). Esse arquivo contém somente métricas agregadas. As capturas preservam o conteúdo do HTML real; o gráfico comparativo é calculado a partir do mesmo JSON. Evidências estáticas ficam em `docs/`; datasets, modelos e relatórios completos continuam ignorados pelo Git.
 
 ```bash
-uv run python -m http.server 8765 \
-  --bind 127.0.0.1 \
-  --directory reports/monitoring
+# Recriar apenas a figura usando o snapshot agregado versionado
+uv run python docs/evidence/generate_figure.py
 ```
 
-Acesse [http://127.0.0.1:8765/observability_dashboard.html](http://127.0.0.1:8765/observability_dashboard.html).
+<a id="governanca"></a>
 
-## Etapa 4 — Governança, LGPD e causalidade
+## 8. Governança, privacidade e causalidade
 
-A Etapa 4 documenta como o sistema deve tratar dados pessoais, decisões automatizadas, retenção, segurança, vieses e responsabilidades. O projeto é acadêmico e não está autorizado a conceder crédito real.
+### Finalidade, dados e base legal proposta
 
-### Inventário e classificação dos dados
+O plano considera análise de risco, monitoramento, investigação de falhas e evidências de auditoria. O dataset público não contém nome, CPF, endereço, telefone ou e-mail. Idade, renda, emprego e histórico de crédito podem atuar como quase-identificadores quando associados a uma pessoa em produção.
 
-O OpenML 43454 não contém nome, CPF, endereço, telefone ou e-mail. Entretanto, idade, renda, emprego, histórico de crédito e condições do empréstimo podem ser dados pessoais ou quase-identificadores quando associados a uma pessoa em produção.
+Dados financeiros merecem proteção elevada, mas não são automaticamente dados sensíveis na definição estrita da LGPD. A base legal proposta no plano é proteção do crédito, art. 7º, X; procedimentos preliminares relacionados a contrato podem ser avaliados conforme art. 7º, V. Consentimento não é apresentado como fundamento genérico para qualquer uso secundário.
 
-Dados financeiros recebem proteção elevada, mas não são classificados automaticamente como dados pessoais sensíveis na definição estrita da LGPD. O dicionário completo está em [`governance/data_dictionary.md`](governance/data_dictionary.md).
+O detalhamento está no [plano LGPD](governance/lgpd_privacy_plan.md) e no [dicionário de dados](governance/data_dictionary.md). A implantação real exige revisão por Jurídico, Risco, Segurança e Encarregado.
 
-### Finalidade e base legal
+### Privacy by Design e retenção
 
-As finalidades são avaliar o risco de inadimplência, monitorar o modelo, investigar falhas e manter evidências de auditoria. A base legal principal proposta é a proteção do crédito, prevista no art. 7º, X, da LGPD. Procedimentos preliminares relacionados a contrato podem também se aplicar conforme o art. 7º, V.
+Minimização de atributos, separação de identidade e dados analíticos, menor privilégio, criptografia e logs sem identificadores diretos compõem a política proposta. O projeto usa dados públicos e logs agregados; TLS, RBAC, criptografia de armazenamento e rotinas de descarte são controles planejados para uma implantação real.
 
-Consentimento não é adotado como fundamento genérico para toda análise de crédito. Usos secundários exigem avaliação própria de finalidade, necessidade e base legal.
+| Categoria | Retenção proposta |
+|---|---|
+| Cache bruto acadêmico | 90 dias |
+| Referência pseudonimizada em produção | Versão ativa + 180 dias |
+| Inferências individuais | 180 dias |
+| Logs técnicos sem PII | 12 meses |
+| Relatórios agregados | 24 meses |
+| Modelo, métricas e model card | 5 anos |
 
-### Privacy by Design e by Default
+Os prazos são uma proposta acadêmica, não prazos legais universais. Obrigações regulatórias e investigações podem exigir tratamento específico.
 
-- minimização das features e ausência de identificadores diretos no modelo;
-- privacidade como configuração padrão;
-- separação entre identidade e atributos analíticos;
-- criptografia em trânsito e em repouso;
-- acesso pelo menor privilégio;
-- logs sem PII, tokens ou segredos;
-- rastreabilidade de dados, modelo, configuração e decisão;
-- revisão periódica de necessidade, retenção, drift e vieses.
+### Direitos, vieses e resposta
 
-### Retenção proposta
+O plano prevê canal para direitos dos titulares e contestação de decisões automatizadas, preservação de evidências e revisão por pessoa qualificada. Features socioeconômicas podem ser proxies de grupos protegidos. Análise por segmento, explicações de decisões e validação de fairness são previstas; não há comprovação quantitativa de ausência de viés neste baseline.
 
-| Categoria | Prazo proposto | Destinação |
-|---|---:|---|
-| cache do dataset bruto acadêmico | 90 dias | exclusão e novo download quando necessário |
-| referência pseudonimizada | versão ativa + 180 dias | exclusão ou anonimização |
-| inferências individuais | 180 dias | agregação e exclusão individual |
-| logs técnicos sem PII | 12 meses | exclusão segura |
-| relatórios agregados | 24 meses | arquivamento ou exclusão |
-| modelo, métricas e model card | 5 anos | revisão e descarte controlado |
+A [política de monitoramento](governance/monitoring_policy.md) define responsáveis, prazos e resposta: confirmar o problema, avaliar impacto, mitigar, comparar soluções, aprovar e manter possibilidade de rollback. Retreinamento e promoção não são disparados automaticamente por um alerta.
 
-Esses prazos são uma política acadêmica proposta, não prazos legais universais. Uma implantação real deve conciliá-los com requisitos regulatórios e políticas corporativas.
+### Causalidade
 
-### Direitos e decisões automatizadas
+PSI e KS evidenciam mudança de distribuição, não a causa econômica da degradação. O cenário OpenML usa uma transformação controlada; o experimento sintético conhece o mecanismo gerador do alvo. Nenhum deles demonstra que inflação ou desemprego causaram perdas em uma carteira real.
 
-O processo deve permitir confirmação de tratamento, acesso, correção, informação sobre compartilhamento e demais direitos aplicáveis. Decisões exclusivamente automatizadas devem admitir solicitação de revisão e explicação clara dos critérios e procedimentos utilizados.
+A [análise causal](governance/causal_analysis.md) explicita hipótese, grafo, confundidores, seleção de clientes e investigação por coortes/segmentos. O [model card](governance/model_card.md) registra finalidade, desempenho, riscos e critérios de revisão.
 
-Uma contestação deve gerar protocolo, preservar as evidências da decisão e ser encaminhada a uma pessoa qualificada. O fluxo completo está em [`governance/lgpd_privacy_plan.md`](governance/lgpd_privacy_plan.md).
+<a id="validacao"></a>
 
-### Governança e vieses
-
-- avaliar desempenho por grupos quando houver base legal e controles adequados;
-- investigar features que possam funcionar como proxies de grupos protegidos;
-- exigir revisão humana em decisões contestadas;
-- impedir retreinamento e promoção automáticos;
-- comparar e aprovar formalmente cada nova versão;
-- manter possibilidade de rollback;
-- registrar incidentes, causas e ações preventivas.
-
-Consulte o [`model card`](governance/model_card.md) e a [`política de monitoramento`](governance/monitoring_policy.md).
-
-### Análise causal
-
-PSI e Kolmogorov-Smirnov evidenciam mudança de distribuição, mas não demonstram causalidade. A queda de recall ocorreu junto com alterações em renda, taxa de juros e comprometimento da renda no cenário simulado. Em produção real, inflação, desemprego, política de concessão, seleção de clientes e mix de produtos poderiam atuar como causas ou confundidores.
-
-Portanto, o projeto não afirma que uma variável econômica específica causou a degradação. A investigação recomendada utiliza coortes temporais, análise por segmentos, registro da política de crédito e testes de robustez. Consulte [`governance/causal_analysis.md`](governance/causal_analysis.md).
-
-### Vídeo STAR
-
-O roteiro de até cinco minutos está em [`governance/video_star_script.md`](governance/video_star_script.md) e cobre:
-
-- **Situation:** risco da degradação silenciosa;
-- **Task:** qualidade, drift, observabilidade e compliance;
-- **Action:** Pandera, Evidently, PSI, KS, logs, alertas e governança;
-- **Result:** lote bloqueado, drift detectado, queda de recall e controles LGPD.
-
-Link do vídeo: **a adicionar após a gravação**.
-
-## Relatório Evidently
-
-O Evidently compara os dados de referência com os dados de produção e gera um relatório HTML interativo em `reports/drift/evidently_drift_report.html`.
-
-## Artefatos gerados
-
-### Etapa 1
-
-```text
-data/raw/credit_risk_openml_43454.csv
-data/reference/reference.parquet
-data/samples/invalid_batch.csv
-reports/data_quality/invalid_batch_failures.csv
-artifacts/models/baseline_pipeline.joblib
-artifacts/metrics/baseline_metrics.json
-```
-
-### Etapa 2
-
-```text
-data/production/production_drifted.parquet
-reports/drift/statistical_drift_results.json
-reports/drift/model_performance_comparison.json
-reports/drift/evidently_drift_report.html
-```
-
-### Etapa 3
-
-```text
-reports/logs/observability.jsonl
-reports/monitoring/health_metrics.json
-reports/monitoring/alerts.json
-reports/monitoring/prometheus_metrics.prom
-reports/monitoring/observability_dashboard.html
-```
-
-### Etapa 4
-
-```text
-governance/causal_analysis.md
-governance/data_dictionary.md
-governance/lgpd_privacy_plan.md
-governance/model_card.md
-governance/monitoring_policy.md
-governance/video_star_script.md
-```
-
-Os datasets, modelos e relatórios gerados são ignorados pelo Git e podem ser reproduzidos pelos comandos do pipeline.
-
-## Qualidade do código
+## 9. Validação técnica
 
 ```bash
 uv run ruff check .
 uv run ruff format --check .
+uv run mypy src/home_credit_observability
 uv run pytest -v
 uv build
 ```
 
-Resultado atual:
+| Verificação | Resultado do reteste |
+|---|---|
+| pytest | 28 aprovados; sem warnings na saída com a política documentada |
+| Ruff / formatação | Aprovados; 65 arquivos Python formatados |
+| Mypy | Aprovado em 35 arquivos de código-fonte |
+| Build | Wheel e distribuição fonte gerados |
+| Pipeline real | Download, treino, contratos, Data Drift, Concept Drift e monitoramento executados |
+| Relatórios | Evidently, dashboard e Concept Drift abertos e conferidos |
+
+Mypy usa a configuração atual do projeto, com `ignore_missing_imports = true`; não está em modo strict. Não há CI automatizada configurada neste repositório. Esses limites não são substituídos por badges de status.
+
+`filterwarnings` transforma novos warnings em erro e possui exceções específicas para depreciações internas do Evidently/Litestar e para um escape inválido na docstring do Evidently 0.7.23. A primeira compilação sem cache também foi validada. As causas dessas exceções permanecem nas dependências e devem ser revistas em upgrades.
+
+PSI com referência constante tem teste próprio e gera valor finito serializável em JSON. Amostra maior que a coorte reservada é rejeitada antes da amostragem. A integração de Concept Drift e o teste de política executam o Evidently real, complementando os testes que usam colaboradores simulados.
+
+<a id="artefatos"></a>
+
+## 10. Artefatos e documentação
+
+| Área | Artefatos principais |
+|---|---|
+| Dados / divisão | `data/raw/credit_risk_openml_43454.csv`, `data/reference/reference.parquet`, `production_source.parquet`, `split_manifest.json` |
+| Contrato | `data/samples/invalid_batch.csv`, `reports/data_quality/invalid_batch_failures.csv` |
+| Modelo | `artifacts/models/baseline_pipeline.joblib`, `artifacts/metrics/baseline_metrics.json` |
+| Produção pareada | `data/production/production_before.parquet`, `production_drifted.parquet` |
+| Drift | `reports/drift/statistical_drift_results.json`, `model_performance_comparison.json`, `evidently_drift_report.html` e `.json` |
+| Monitoramento | `reports/monitoring/health_metrics.json`, `alerts.json`, `prometheus_metrics.prom`, `observability_dashboard.html` |
+| Logs | `reports/logs/observability.jsonl` |
+| Concept Drift | `reports/concept/concept_summary.json`, `concept_report.html`, `evidently_inputs.html` e `.json`, Parquets antes/depois e modelo sintético |
+| Evidências versionadas | `docs/images/`, `docs/evidence/results.json`, script da figura e log de validação |
+
+Os caminhos abreviados nas células mantêm o diretório inicial indicado. Dados e relatórios operacionais são regeneráveis; as figuras e o snapshot agregado permitem visualizar a evidência diretamente no GitHub.
 
 ```text
-28 testes aprovados
+configs/       Configurações descritivas; pipelines usam parâmetros em código
+src/           Preparação, contratos, modelos, drift, observabilidade e pipelines
+tests/         Testes unitários e de integração
+scripts/       Entradas auxiliares dos pipelines
+governance/    Privacidade, model card, causalidade e políticas
+docs/          Evidências estáticas e respectivas métricas agregadas
+data/          Datasets locais, ignorados pelo Git
+artifacts/     Modelos e métricas gerados
+reports/       Relatórios, predições do cenário sintético e logs gerados
 ```
 
-## Scripts auxiliares
+### Evolução
 
-```bash
-uv run python scripts/download_data.py
-uv run python scripts/validate_data.py
-uv run python scripts/train_model.py
-uv run python scripts/run_drift.py
-uv run python scripts/run_monitoring.py
-```
+| Versão / evolução | Entrega |
+|---|---|
+| `0.1.0` | Contratos e baseline |
+| `0.2.0` | Simulação, PSI, KS e Evidently |
+| `0.3.0` | Logs, métricas, alertas e dashboard |
+| `0.4.0` | Governança, LGPD, causalidade e roteiro |
+| Correções posteriores | Produção independente, Concept Drift, métricas individuais e política de warnings |
 
-## Versionamento
+<a id="troubleshooting"></a>
 
-- `v0.1.0`: validação de dados, contrato Pandera e modelo baseline.
-- `v0.2.0`: simulação de produção, detecção de drift e relatório Evidently.
-- `v0.3.0`: observabilidade, logs estruturados, métricas Prometheus, alertas e dashboard.
-- `v0.4.0`: governança, LGPD, causalidade e roteiro STAR.
+## 11. Troubleshooting
 
-## Próximas etapas
+| Situação | Ação |
+|---|---|
+| Modelo ou coorte independente ausente | Execute `train` antes de `drift` / `monitor` |
+| `sample_size` maior que a reserva | Use até 9.723 neste dataset; o padrão é 8.000, sem reposição |
+| Dataset não baixa | Confira conexão com OpenML; download exige internet na primeira execução |
+| Lote inválido bloqueado | Resultado esperado de `validate-invalid`; confira o CSV de violações |
+| Dashboard informa `critical` | Examine os alertas; no cenário demonstrativo há drift e queda de recall |
+| Evidently não detecta Data Drift no comando `concept` | Esperado: as entradas são iguais e muda a relação com o alvo |
+| p95 diverge da captura | Hardware, carga e execução alteram latência; não compare com tempo médio de lote |
+| Novo warning faz pytest falhar | Investigue a origem; evite ignorar warnings globalmente |
+| HTML não abre na porta 8765 | Inicie o servidor com `--directory reports` e use os caminhos da seção 2 |
 
-- gravar e publicar o vídeo STAR de até cinco minutos;
-- substituir o campo provisório pelo link do vídeo;
-- executar a revisão final dos entregáveis;
-- publicar a versão `v0.4.0` após o aceite da documentação.
+<a id="video"></a>
+
+## 12. Vídeo STAR e próximos passos
+
+**Vídeo de até cinco minutos: pendente de gravação e publicação.** O [roteiro STAR](governance/video_star_script.md) é a base; deve incluir o experimento de Concept Drift e os resultados atuais antes da gravação.
+
+| STAR | Demonstração sugerida |
+|---|---|
+| Situation | Risco de degradação silenciosa de um modelo de crédito |
+| Task | Interceptar dados ruins, detectar drift e documentar governança |
+| Action | Contrato bloqueando lote; divisão independente; relatórios de Data/Concept Drift |
+| Result | Queda de recall, alertas, limites da conclusão e plano de resposta |
+
+A entrega restante é publicar o vídeo e inserir seu link aqui. Como evoluções técnicas, há espaço para CI, histórico por execução, agendamento, rastreabilidade por hashes e análise quantitativa de vieses. Elas não são anunciadas como funcionalidades já presentes.
 
 ## Autor
 
-**Rafael Alves da Costa**
-
-GitHub: [RafaExMachina](https://github.com/RafaExMachina)
-
-## Correções de rigor experimental
-
-### 1. Concept Drift controlado
-
-```bash
-uv run python -m home_credit_observability.cli concept
-```
-
-O cenário sintético é independente do dataset OpenML e utiliza um mecanismo conhecido:
-
-```text
-z = (juros - 14)/3,5 + (comprometimento - 0,30)/0,15
-P(Y=1|X) antes  = sigmoid(-1 + 1,8*z)
-P(Y=1|X) depois = sigmoid(-1 - 1,8*z)
-```
-
-A reversão é deliberadamente intensa para fins didáticos; não é uma hipótese sobre crédito real. Um modelo é treinado em outra coorte sintética. Na avaliação, as entradas são idênticas antes/depois e os mesmos uniformes geram os resultados pelos dois mecanismos. Portanto, P(X) empírica é preservada e P(Y|X) muda por construção, sem inverter rótulos arbitrariamente.
-
-Em 8.000 registros e semente 42: zero testes de drift positivos nas entradas; ROC AUC 0,8953 antes e 0,0965 depois; recall 0,8125 antes e 0,0711 depois. A prevalência foi 37,875% e 37,775%, respectivamente: diferenças finitas de amostragem não são a evidência de Concept Drift. McNemar exato compara os erros pareados; valores extremamente pequenos podem aparecer como zero por limite numérico, não como probabilidade matematicamente nula.
-
-Artefatos em `reports/concept/`: `concept_report.html`, `evidently_inputs.html`, `evidently_inputs.json`, `concept_summary.json`, `statistical_drift_results.json`, `before.parquet`, `after.parquet` e `synthetic_model.joblib`. O JSON documenta o mecanismo, as métricas, o teste pareado e os alertas de desempenho. A ausência de Data Drift no Evidently é esperada neste cenário. A queda de métricas sozinha não comprovaria Concept Drift em dados reais.
-
-### 2. Coorte independente e comparação pareada
-
-A divisão estratificada com semente 42 reserva 30% dos dados limpos para produção antes de qualquer fitting. Dos 32.409 registros, 22.686 ficam no desenvolvimento e 9.723 na coorte de produção. Dentro do desenvolvimento, o baseline mantém sua divisão 80/20 (18.148 treino e 4.538 teste). A coorte reservada não entra no treino nem na validação interna.
-
-`reference.parquet` representa a distribuição de desenvolvimento para drift. `production_source.parquet` guarda a coorte independente. `split_manifest.json` permite verificar que os índices de origem não se sobrepõem. Produção tem 8.000 registros selecionados sem reposição. `production_before.parquet` e `production_drifted.parquet` guardam os mesmos registros antes/depois.
-
-No JSON de desempenho, `reference` significa avaliação da coorte independente antes da transformação. No Evidently, referência significa distribuição de desenvolvimento. O dashboard usa os rótulos Antes/Depois para evitar confusão.
-
-**Execute `train` novamente após aplicar a correção.** O pipeline recusa executar sem a nova coorte. Os números anteriores à correção não devem ser usados na apresentação.
-
-### 3. Política de drift idêntica no Evidently e nos alertas
-
-O Evidently usa sete features numéricas, excluindo alvo e saídas do modelo. Um teste registrado chama os mesmos detectores do pipeline: PSI >= 0,25 OU KS p < 0,05. O limiar global é 1/7, ou seja, pelo menos uma feature com drift.
-
-O score mostrado no Evidently é normalizado: max(PSI/0,25, -log10(p)/-log10(0,05)). Ele não é o PSI bruto nem um valor-p. Os valores individuais originais ficam em `statistical_drift_results.json`. KS é exploratório, sem ajuste por comparações múltiplas; alertas exigem investigação. O adaptador foi testado com a versão Evidently fixada no lockfile e precisa de revisão quando ela for atualizada.
-
-### 4. Métricas e casos de borda
-
-- p50/p95/p99 usam uma chamada por registro, após warm-up, com modelo carregado; incluem pré-processamento, mas não HTTP, rede ou carregamento. A medição de 8.000 chamadas demora mais que a antiga medição em lotes.
-- `prediction_confidence_mean` representa probabilidade da classe prevista; `prediction_default_probability_mean` representa probabilidade média de inadimplência.
-- `pipeline_duration_before_export_seconds` mede até a coleta, não todo o custo de escrita dos artefatos.
-- PSI de referência constante usa três categorias (abaixo/igual/acima), suavização e renormalização, gerando valor finito e JSON válido.
-- `sample_size` maior que a coorte é rejeitado com mensagem clara; não há reposição para criar duplicatas que o contrato bloquearia.
+**Rafael Alves da Costa** — [RafaExMachina](https://github.com/RafaExMachina)
