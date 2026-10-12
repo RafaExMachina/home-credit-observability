@@ -18,6 +18,9 @@ Construir uma camada de sustentação e confiabilidade para um modelo de Credit 
 - logs estruturados de execução e alertas;
 - métricas operacionais no formato Prometheus;
 - dashboard HTML interativo;
+- plano de privacidade e proteção de dados;
+- governança do modelo e análise causal;
+- roteiro de apresentação pelo método STAR;
 - testes automatizados;
 - documentação e governança.
 
@@ -88,6 +91,9 @@ Logs + métricas + políticas de alerta
       |
       v
 Dashboard Plotly + exposição Prometheus
+      |
+      v
+Governança LGPD + análise causal + model card
 ```
 
 ## Estrutura do projeto
@@ -104,6 +110,12 @@ Dashboard Plotly + exposição Prometheus
 │   ├── reference/
 │   └── samples/
 ├── governance/
+│   ├── causal_analysis.md
+│   ├── data_dictionary.md
+│   ├── lgpd_privacy_plan.md
+│   ├── model_card.md
+│   ├── monitoring_policy.md
+│   └── video_star_script.md
 ├── reports/
 │   ├── data_quality/
 │   ├── drift/
@@ -327,6 +339,81 @@ uv run python -m http.server 8765 \
 
 Acesse [http://127.0.0.1:8765/observability_dashboard.html](http://127.0.0.1:8765/observability_dashboard.html).
 
+## Etapa 4 — Governança, LGPD e causalidade
+
+A Etapa 4 documenta como o sistema deve tratar dados pessoais, decisões automatizadas, retenção, segurança, vieses e responsabilidades. O projeto é acadêmico e não está autorizado a conceder crédito real.
+
+### Inventário e classificação dos dados
+
+O OpenML 43454 não contém nome, CPF, endereço, telefone ou e-mail. Entretanto, idade, renda, emprego, histórico de crédito e condições do empréstimo podem ser dados pessoais ou quase-identificadores quando associados a uma pessoa em produção.
+
+Dados financeiros recebem proteção elevada, mas não são classificados automaticamente como dados pessoais sensíveis na definição estrita da LGPD. O dicionário completo está em [`governance/data_dictionary.md`](governance/data_dictionary.md).
+
+### Finalidade e base legal
+
+As finalidades são avaliar o risco de inadimplência, monitorar o modelo, investigar falhas e manter evidências de auditoria. A base legal principal proposta é a proteção do crédito, prevista no art. 7º, X, da LGPD. Procedimentos preliminares relacionados a contrato podem também se aplicar conforme o art. 7º, V.
+
+Consentimento não é adotado como fundamento genérico para toda análise de crédito. Usos secundários exigem avaliação própria de finalidade, necessidade e base legal.
+
+### Privacy by Design e by Default
+
+- minimização das features e ausência de identificadores diretos no modelo;
+- privacidade como configuração padrão;
+- separação entre identidade e atributos analíticos;
+- criptografia em trânsito e em repouso;
+- acesso pelo menor privilégio;
+- logs sem PII, tokens ou segredos;
+- rastreabilidade de dados, modelo, configuração e decisão;
+- revisão periódica de necessidade, retenção, drift e vieses.
+
+### Retenção proposta
+
+| Categoria | Prazo proposto | Destinação |
+|---|---:|---|
+| cache do dataset bruto acadêmico | 90 dias | exclusão e novo download quando necessário |
+| referência pseudonimizada | versão ativa + 180 dias | exclusão ou anonimização |
+| inferências individuais | 180 dias | agregação e exclusão individual |
+| logs técnicos sem PII | 12 meses | exclusão segura |
+| relatórios agregados | 24 meses | arquivamento ou exclusão |
+| modelo, métricas e model card | 5 anos | revisão e descarte controlado |
+
+Esses prazos são uma política acadêmica proposta, não prazos legais universais. Uma implantação real deve conciliá-los com requisitos regulatórios e políticas corporativas.
+
+### Direitos e decisões automatizadas
+
+O processo deve permitir confirmação de tratamento, acesso, correção, informação sobre compartilhamento e demais direitos aplicáveis. Decisões exclusivamente automatizadas devem admitir solicitação de revisão e explicação clara dos critérios e procedimentos utilizados.
+
+Uma contestação deve gerar protocolo, preservar as evidências da decisão e ser encaminhada a uma pessoa qualificada. O fluxo completo está em [`governance/lgpd_privacy_plan.md`](governance/lgpd_privacy_plan.md).
+
+### Governança e vieses
+
+- avaliar desempenho por grupos quando houver base legal e controles adequados;
+- investigar features que possam funcionar como proxies de grupos protegidos;
+- exigir revisão humana em decisões contestadas;
+- impedir retreinamento e promoção automáticos;
+- comparar e aprovar formalmente cada nova versão;
+- manter possibilidade de rollback;
+- registrar incidentes, causas e ações preventivas.
+
+Consulte o [`model card`](governance/model_card.md) e a [`política de monitoramento`](governance/monitoring_policy.md).
+
+### Análise causal
+
+PSI e Kolmogorov-Smirnov evidenciam mudança de distribuição, mas não demonstram causalidade. A queda de recall ocorreu junto com alterações em renda, taxa de juros e comprometimento da renda no cenário simulado. Em produção real, inflação, desemprego, política de concessão, seleção de clientes e mix de produtos poderiam atuar como causas ou confundidores.
+
+Portanto, o projeto não afirma que uma variável econômica específica causou a degradação. A investigação recomendada utiliza coortes temporais, análise por segmentos, registro da política de crédito e testes de robustez. Consulte [`governance/causal_analysis.md`](governance/causal_analysis.md).
+
+### Vídeo STAR
+
+O roteiro de até cinco minutos está em [`governance/video_star_script.md`](governance/video_star_script.md) e cobre:
+
+- **Situation:** risco da degradação silenciosa;
+- **Task:** qualidade, drift, observabilidade e compliance;
+- **Action:** Pandera, Evidently, PSI, KS, logs, alertas e governança;
+- **Result:** lote bloqueado, drift detectado, queda de recall e controles LGPD.
+
+Link do vídeo: **a adicionar após a gravação**.
+
 ## Relatório Evidently
 
 O Evidently compara os dados de referência com os dados de produção e gera um relatório HTML interativo em `reports/drift/evidently_drift_report.html`.
@@ -363,6 +450,17 @@ reports/monitoring/prometheus_metrics.prom
 reports/monitoring/observability_dashboard.html
 ```
 
+### Etapa 4
+
+```text
+governance/causal_analysis.md
+governance/data_dictionary.md
+governance/lgpd_privacy_plan.md
+governance/model_card.md
+governance/monitoring_policy.md
+governance/video_star_script.md
+```
+
 Os datasets, modelos e relatórios gerados são ignorados pelo Git e podem ser reproduzidos pelos comandos do pipeline.
 
 ## Qualidade do código
@@ -395,13 +493,14 @@ uv run python scripts/run_monitoring.py
 - `v0.1.0`: validação de dados, contrato Pandera e modelo baseline.
 - `v0.2.0`: simulação de produção, detecção de drift e relatório Evidently.
 - `v0.3.0`: observabilidade, logs estruturados, métricas Prometheus, alertas e dashboard.
+- `v0.4.0` (próxima versão): governança, LGPD, causalidade e roteiro STAR.
 
 ## Próximas etapas
 
-- documentar o plano de privacidade e conformidade com a LGPD;
-- consolidar o dicionário de dados e a política de monitoramento;
-- finalizar o model card;
-- preparar a apresentação e o vídeo demonstrativo.
+- gravar e publicar o vídeo STAR de até cinco minutos;
+- substituir o campo provisório pelo link do vídeo;
+- executar a revisão final dos entregáveis;
+- publicar a versão `v0.4.0` após o aceite da documentação.
 
 ## Autor
 
