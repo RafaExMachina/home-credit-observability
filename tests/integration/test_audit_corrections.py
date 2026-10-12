@@ -60,7 +60,10 @@ def test_real_evidently_marks_one_changed_feature_as_dataset_drift(tmp_path):
     reference = pd.DataFrame(
         {
             "person_income": np.arange(100, dtype=float),
-            "person_age": np.full(100, 30.0),
+            # Coluna estável, mas não constante: a correlação do Evidently
+            # não está definida para variância zero. PSI constante tem
+            # cobertura própria em tests/unit/drift/test_psi.py.
+            "person_age": np.linspace(20.0, 60.0, 100),
         }
     )
     current = reference.copy()

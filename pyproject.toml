@@ -43,6 +43,14 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = [
+    # Novos warnings falham o teste. Exceções abaixo são de dependências
+    # fixadas no uv.lock e devem ser revistas quando forem atualizadas.
+    "error",
+    'ignore:^numpy\.core is deprecated and has been renamed to numpy\._core\.:DeprecationWarning:evidently\.legacy\.tests\.utils$',
+    'ignore:^Call to deprecated function \x27Dependency\x27\.:DeprecationWarning:litestar\.utils\.deprecation$',
+    'ignore:^Use of deprecated class \x27DependencyKwarg\x27\.:DeprecationWarning:litestar\.params$',
+]
 
 [tool.ruff]
 line-length = 88
