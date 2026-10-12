@@ -50,6 +50,8 @@ filterwarnings = [
     'ignore:^numpy\.core is deprecated and has been renamed to numpy\._core\.:DeprecationWarning:evidently\.legacy\.tests\.utils$',
     'ignore:^Call to deprecated function \x27Dependency\x27\.:DeprecationWarning:litestar\.utils\.deprecation$',
     'ignore:^Use of deprecated class \x27DependencyKwarg\x27\.:DeprecationWarning:litestar\.params$',
+    # Evidently 0.7.23: escape inválido na docstring ao compilar sem cache.
+    'ignore:^invalid escape sequence \x27\\d\x27$:SyntaxWarning:.*[/\\]evidently[/\\]descriptors[/\\]text_match(\.py)?$',
 ]
 
 [tool.ruff]
