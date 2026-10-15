@@ -45,23 +45,52 @@ Uma fintech pode perder capacidade de identificar inadimplência mesmo com o pip
 
 A solução combina **Pandera**, **scikit-learn**, **PSI e Kolmogorov–Smirnov**, **Evidently**, **Plotly**, logs JSONL e métricas exportadas em formato Prometheus. A decisão de resposta é documentada: um alerta pede investigação e revisão; não promove um novo modelo automaticamente.
 
-### Matriz de atendimento à Fase 4
+### Matriz de conformidade
 
-| Requisito | Implementação / evidência | Situação |
-|---|---|---|
-| Modelo binário financeiro e pelo menos 5.000 amostras | Regressão Logística; OpenML 43454 com 32.409 registros limpos | Implementado |
-| Contrato com pelo menos três regras rígidas | [Schema Pandera](src/home_credit_observability/validation/schema.py): domínio, faixa, nulidade e duplicatas | Implementado |
-| Bloquear lote com erros | Comando `validate-invalid`; quatro violações interceptadas | Demonstrado |
-| Separar referência e produção | Reserva estratificada antes do fitting; comparação pareada fora do treino | Demonstrado |
-| Alterar ao menos duas variáveis | Renda, juros e comprometimento da renda | Demonstrado |
-| Detecção estatística e relatório HTML | PSI + KS; Evidently com política alinhada aos alertas | Demonstrado |
-| Data Drift e Concept Drift | Cenário OpenML transformado e experimento sintético condicional separado | Demonstrado |
-| Observabilidade e logs | Dashboard Plotly, JSONL, Parquet de predições, JSON de drift e arquivo `.prom` | Implementado |
-| Governança e análise causal no README | [Seção 8](#governanca) e documentos complementares | Documentado |
-| Histórico organizado | Commits por etapa e correções específicas | Disponível no Git |
-| Vídeo STAR de até cinco minutos | [Roteiro](governance/video_star_script.md); link ainda pendente | **Pendente** |
+A matriz cobre as **Etapas 1, 2, 3 e 4 do Tech Challenge da Fase 4**, conforme o enunciado. Essas etapas não representam os desafios anteriores das Fases 1, 2 e 3 do curso. A avaliação abaixo relaciona cada tarefa a código, artefatos e limites verificáveis.
 
-Os cinco critérios da rubrica são validação de dados (25%), drift (25%), observabilidade/logs (20%), governança (15%) e vídeo (15%). Esta matriz localiza as evidências; não representa uma nota atribuída pela banca.
+**Legenda:** **Implementado** = recurso presente no código; **Demonstrado** = comportamento com evidência de execução; **Documentado** = requisito teórico descrito; **Pendente** = entrega ainda sem evidência publicada. Esses estados não equivalem a certificação de conformidade ou nota atribuída pela banca.
+
+| Etapa | Requisito do enunciado | Implementação e evidência | Situação |
+|---|---|---|---|
+| **1 — Validação e baseline** | Treinar classificador de crédito com referência limpa | [Treinamento](src/home_credit_observability/pipelines/train_pipeline.py), [preparação](src/home_credit_observability/data/prepare.py) e [métricas versionadas](docs/evidence/results.json): Regressão Logística, 32.409 registros limpos, 18.148 para fitting e 4.538 no holdout interno | **Demonstrado** |
+| 1 | Criar contrato com regras estritas em Pandera ou Great Expectations | [Schema Pandera](src/home_credit_observability/validation/schema.py): idade entre 18 e 100, renda positiva e não nula, domínios categóricos e ausência de linhas integralmente duplicadas | **Implementado** |
+| 1 | Forçar erro e bloquear a ingestão | `validate-invalid`, [validador](src/home_credit_observability/validation/validator.py) e [testes](tests/unit/test_schema.py): idade 150, renda negativa, alvo inválido e duplicata. Relatório em `reports/data_quality/invalid_batch_failures.csv` | **Demonstrado** |
+| 1 | Entregar script de validação e baseline treinado | [CLI](src/home_credit_observability/cli.py): `train`, `validate` e `validate-invalid`; modelo gerado em `artifacts/models/baseline_pipeline.joblib` | **Implementado** |
+| **2 — Simulação e drift** | Criar produção alterando ao menos duas variáveis importantes | [Simulador](src/home_credit_observability/drift/simulator.py): renda −35%, juros +3 p.p. e comprometimento recalculado, com rótulos preservados | **Demonstrado** |
+| 2 | Gerar predições para o novo dataset | [Serviço de inferência](src/home_credit_observability/drift/prediction.py) e [pipeline](src/home_credit_observability/pipelines/drift_pipeline.py); classe e probabilidade em `data/production/production_drifted.parquet` | **Implementado** |
+| 2 | Comparar referência e produção com Evidently AI | [Relatório Evidently](src/home_credit_observability/reporting/evidently_report.py), HTML em `reports/drift/evidently_drift_report.html` e [captura](docs/images/evidently-data-drift.jpg) | **Demonstrado** |
+| 2 | Identificar features com testes estatísticos | [PSI](src/home_credit_observability/drift/psi.py), [KS](src/home_credit_observability/drift/ks.py) e [resultados](docs/evidence/results.json): 3 de 7 features com drift; 6 testes positivos de 14 | **Demonstrado** |
+| 2 | Entregar relatório claro das variáveis degradadas | Evidently e [dashboard](docs/images/monitoring-dashboard.jpg), com política alinhada; detalhes na [Seção 5](#data-drift) | **Demonstrado** |
+| **3 — Observabilidade** | Centralizar registros de predições e resultados de drift | [Pipeline de monitoramento](src/home_credit_observability/pipelines/monitoring_pipeline.py) coordena Parquet de predições, JSON/HTML de drift e eventos/métricas agregadas em `reports/logs/observability.jsonl`; não grava cada predição como evento JSONL | **Implementado** |
+| 3 | Expor dashboard ou relatórios automatizados | [Dashboard Plotly](src/home_credit_observability/observability/dashboard.py), Evidently e [figuras de evidência](#observabilidade). Exportação `.prom` disponível; não exige Grafana em execução | **Demonstrado** |
+| 3 | Documentar métricas de saúde e alertas | [Seção 7](#observabilidade), [coletor](src/home_credit_observability/observability/metrics.py) e [políticas de alerta](src/home_credit_observability/observability/alerts.py): volume, nulidade, latência individual, drift, recall e ROC AUC | **Documentado e implementado** |
+| 3 | Evidenciar saúde e degradação | 8.000 predições, nenhuma nula; recall de 78,28% para 69,05%, com alertas de drift e degradação; [comparação](docs/images/drift-comparison.png) | **Demonstrado** |
+| **4 — Governança** | Explicar tratamento de dados pessoais, finalidade e base legal proposta | [Seção 8](#governanca), [plano de privacidade](governance/lgpd_privacy_plan.md) e [dicionário](governance/data_dictionary.md): minimização, quase-identificadores e limites do uso acadêmico | **Documentado** |
+| 4 | Definir retenção, privacidade e mitigação de vieses | [Seção 8](#governanca): prazos propostos, direitos dos titulares, proxies, análise por segmento e revisão humana. Fairness quantitativa e descarte automático não estão implementados | **Documentado** |
+| 4 | Apresentar governança e causalidade no README | [Análise causal no README](#governanca) e [documento complementar](governance/causal_analysis.md): hipótese, confundidores, seleção e limites da conclusão | **Documentado** |
+| 4 | Gravar vídeo STAR e disponibilizar link, até cinco minutos | [Roteiro](governance/video_star_script.md) e [Seção 12](#video); sem link publicado nesta versão auditada | **Pendente** |
+
+A rubrica atribui 25% à validação, 25% ao drift, 20% à observabilidade/logs, 15% à governança e 15% ao vídeo. A etapa 4 contém tanto documentação de governança quanto a entrega do vídeo; sua conclusão depende de ambos.
+
+### Auditoria técnica das quatro etapas
+
+**Escopo e rastreabilidade.** Revisão realizada em 15/10/2026 sobre o código publicado no commit `18fcc9f`. Foram inspecionados contratos, separação de dados, inferência, simulação, detecção, integração com Evidently, métricas, logs e documentos de governança. Nesta revisão, a suíte foi executada novamente sobre o código desse checkout: **28 testes aprovados em 6,69 s**, com **Ruff aprovado**. O ambiente de dependências do reteste anterior foi reutilizado; isso não representa uma instalação nova do zero. O [registro desta auditoria](docs/evidence/audit-2026-10-15.txt) preserva os comandos e a saída.
+
+**Evidências de execução.** As figuras e o [snapshot agregado](docs/evidence/results.json) vêm do reteste de 12/10/2026, cujo código funcional corresponde ao commit `fc222e2`; o commit `18fcc9f` acrescentou documentação e evidências. Nesta auditoria documental, os pipelines completos não foram executados novamente. Latência varia por ambiente e execução: os 16,78 ms do snapshot histórico não devem substituir o valor de um dashboard regenerado.
+
+| Verificação de auditoria | Constatação e limite |
+|---|---|
+| Independência da avaliação | Reserva da produção antes do fitting, manifesto de índices e [teste de disjunção](tests/integration/test_audit_corrections.py). A comparação de desempenho usa a mesma coorte independente antes/depois; a referência estatística de distribuição é distinta dessa comparação pareada. |
+| Bloqueio de dados ruins | Contrato estrito e teste de lote inválido. O exemplo de idade do enunciado é ilustrativo: a regra efetiva aceita 18 anos e rejeita valores fora de 18–100. Emprego e juros permitem nulos imputáveis conforme documentado. |
+| Consistência dos alertas | Evidently usa PSI/KS operacionais e limiar global de uma feature em sete; integração com Evidently real possui teste. Três features, seis testes positivos e dois alertas são contagens diferentes. |
+| Qualidade das métricas | p95 calculado sobre chamadas individuais. PSI de referência constante tem cobertura de teste e resultado finito serializável. Aumento de acurácia não elimina a degradação de recall. |
+| Concept Drift adicional | [Experimento separado](#concept-drift) preserva entradas e muda explicitamente a relação condicional. É evidência sintética, sem comprovar causalidade econômica real. |
+| Centralização operacional | Artefatos têm caminhos definidos e o JSONL centraliza eventos/agregados. Não há serviço de logs externo, histórico por `run_id` nem monitoramento continuamente agendado. |
+| Governança | O requisito teórico está documentado. TLS, RBAC, descarte e fairness quantitativa são propostas/evoluções, sem evidência de implantação ou certificação legal. |
+| Entrega audiovisual | Vídeo e link continuam pendentes na versão examinada. Após publicar, atualizar esta matriz e a [Seção 12](#video). |
+
+**Conclusão da auditoria:** as Etapas 1 e 2 possuem implementação e demonstrações; a Etapa 3 possui dashboard, relatórios, métricas e registros organizados, com a forma de centralização explicitada acima. A documentação teórica da Etapa 4 está presente; a entrega da etapa permanece **parcial enquanto o vídeo não for publicado**. Não foi identificado bloqueador adicional nas verificações executadas. A avaliação é técnica e acadêmica, sem garantia de nota ou declaração de conformidade regulatória.
 
 <a id="reproducao"></a>
 

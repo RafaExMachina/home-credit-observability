@@ -1,0 +1,35 @@
+Auditoria técnica — 15/10/2026
+Base: 18fcc9f
+Checkout novo; ambiente de dependências do reteste anterior reutilizado.
+Comandos (executados na raiz do checkout):
+PYTHONPATH=src <venv-do-reteste>/bin/python -m pytest -v
+<venv-do-reteste>/bin/ruff check .
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: <checkout auditado>
+configfile: pyproject.toml
+testpaths: tests
+plugins: cov-7.1.0, anyio-4.15.1, typeguard-4.6.0, Faker-40.39.0
+collected 28 items
+
+tests/integration/test_audit_corrections.py ....                         [ 14%]
+tests/integration/test_drift_pipeline.py .                               [ 17%]
+tests/integration/test_monitoring_pipeline.py .                          [ 21%]
+tests/integration/test_train_pipeline.py .                               [ 25%]
+tests/unit/drift/test_detector.py .                                      [ 28%]
+tests/unit/drift/test_ks.py ..                                           [ 35%]
+tests/unit/drift/test_psi.py ....                                        [ 50%]
+tests/unit/drift/test_simulator.py ...                                   [ 60%]
+tests/unit/observability/test_alerts.py .                                [ 64%]
+tests/unit/observability/test_dashboard.py .                             [ 67%]
+tests/unit/observability/test_logger.py .                                [ 71%]
+tests/unit/observability/test_metrics.py ..                              [ 78%]
+tests/unit/test_preprocessing.py .                                       [ 82%]
+tests/unit/test_schema.py .....                                          [100%]
+
+============================== 28 passed in 6.69s ==============================
+
+Ruff: All checks passed!
+
+Pipelines completos não reexecutados nesta auditoria.
