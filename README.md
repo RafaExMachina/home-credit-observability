@@ -14,7 +14,7 @@ O cenário central mostra por que uma acurácia maior pode esconder um problema:
 | Produção simulada | **8.000 registros**, reservados antes do treinamento |
 | Data Drift | **3 features afetadas**, 6 de 14 testes positivos |
 | Concept Drift | Zero testes de drift positivos nas entradas; ROC AUC **0,8953 → 0,0965** |
-| Vídeo STAR | Pendente; roteiro disponível |
+| Vídeo STAR | Gravado; roteiro disponível |
 
 > **Escopo:** o sistema monitora um modelo acadêmico. Não concede crédito real. A execução é por lote, iniciada pela CLI; não há serviço de monitoramento continuamente agendado. As políticas de segurança e LGPD são propostas documentadas, não certificação de conformidade em produção.
 
@@ -493,16 +493,16 @@ reports/       Relatórios, predições do cenário sintético e logs gerados
 
 ## 12. Vídeo STAR e próximos passos
 
-**Vídeo de até cinco minutos: pendente de gravação e publicação.** O [roteiro STAR](governance/video_star_script.md) é a base; deve incluir o experimento de Concept Drift e os resultados atuais antes da gravação.
+**[Assistir ao vídeo STAR no YouTube](https://youtu.be/l8lFG-yi6YA)** O [roteiro STAR](governance/video_star_script.md) é a base; deve incluir o experimento de Concept Drift e os resultados atuais antes da gravação.
 
-| STAR | Demonstração sugerida |
+| STAR | Demonstração apresentada |
 |---|---|
 | Situation | Risco de degradação silenciosa de um modelo de crédito |
 | Task | Interceptar dados ruins, detectar drift e documentar governança |
 | Action | Contrato bloqueando lote; divisão independente; relatórios de Data/Concept Drift |
 | Result | Queda de recall, alertas, limites da conclusão e plano de resposta |
 
-A entrega restante é publicar o vídeo e inserir seu link aqui. Como evoluções técnicas, há espaço para CI, histórico por execução, agendamento, rastreabilidade por hashes e análise quantitativa de vieses. Elas não são anunciadas como funcionalidades já presentes.
+Como evoluções técnicas, há espaço para CI, histórico por execução, agendamento, rastreabilidade por hashes e análise quantitativa de vieses. Elas não são anunciadas como funcionalidades já presentes.
 
 ## Autor
 
