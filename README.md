@@ -493,7 +493,7 @@ reports/       Relatórios, predições do cenário sintético e logs gerados
 
 ## 12. Vídeo STAR e próximos passos
 
-**[Assistir ao vídeo STAR no YouTube](https://youtu.be/l8lFG-yi6YA)** O [roteiro STAR](governance/video_star_script.md) é a base e inclui o experimento de Concept Drift e os resultados.
+**[Assistir ao vídeo STAR no YouTube](https://youtu.be/l8lFG-yi6YA)**. O [roteiro STAR](governance/video_star_script.md) é a base e inclui o experimento de Concept Drift e os resultados.
 
 | STAR | Demonstração apresentada |
 |---|---|
