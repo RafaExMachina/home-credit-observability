@@ -30,9 +30,9 @@
 - 8.000 predições monitoradas;
 - zero predições nulas;
 - seis alertas estatísticos em três features;
-- recall reduzido de 0,7771 para 0,6823;
+- recall reduzido de 0,7828 para 0,6905;
 - dois alertas operacionais e estado geral crítico;
-- vinte testes automatizados aprovados.
+- vinte e oito testes automatizados aprovados.
 
 ## 4:40-5:00 - Encerramento
 

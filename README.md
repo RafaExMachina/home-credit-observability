@@ -57,7 +57,7 @@ A matriz cobre as **Etapas 1, 2, 3 e 4 do Tech Challenge da Fase 4**, conforme o
 | 1 | Criar contrato com regras estritas em Pandera ou Great Expectations | [Schema Pandera](src/home_credit_observability/validation/schema.py): idade entre 18 e 100, renda positiva e não nula, domínios categóricos e ausência de linhas integralmente duplicadas | **Implementado** |
 | 1 | Forçar erro e bloquear a ingestão | `validate-invalid`, [validador](src/home_credit_observability/validation/validator.py) e [testes](tests/unit/test_schema.py): idade 150, renda negativa, alvo inválido e duplicata. Relatório em `reports/data_quality/invalid_batch_failures.csv` | **Demonstrado** |
 | 1 | Entregar script de validação e baseline treinado | [CLI](src/home_credit_observability/cli.py): `train`, `validate` e `validate-invalid`; modelo gerado em `artifacts/models/baseline_pipeline.joblib` | **Implementado** |
-| **2 — Simulação e drift** | Criar produção alterando ao menos duas variáveis importantes | [Simulador](src/home_credit_observability/drift/simulator.py): renda −35%, juros +3 p.p. e comprometimento recalculado, com rótulos preservados | **Demonstrado** |
+| **2 — Simulação e drift** | Criar produção alterando ao menos duas variáveis importantes | [Simulador](src/home_credit_observability/drift/simulator.py): renda +35%, juros +3 p.p. e comprometimento recalculado, com rótulos preservados | **Demonstrado** |
 | 2 | Gerar predições para o novo dataset | [Serviço de inferência](src/home_credit_observability/drift/prediction.py) e [pipeline](src/home_credit_observability/pipelines/drift_pipeline.py); classe e probabilidade em `data/production/production_drifted.parquet` | **Implementado** |
 | 2 | Comparar referência e produção com Evidently AI | [Relatório Evidently](src/home_credit_observability/reporting/evidently_report.py), HTML em `reports/drift/evidently_drift_report.html` e [captura](docs/images/evidently-data-drift.jpg) | **Demonstrado** |
 | 2 | Identificar features com testes estatísticos | [PSI](src/home_credit_observability/drift/psi.py), [KS](src/home_credit_observability/drift/ks.py) e [resultados](docs/evidence/results.json): 3 de 7 features com drift; 6 testes positivos de 14 | **Demonstrado** |
@@ -69,7 +69,7 @@ A matriz cobre as **Etapas 1, 2, 3 e 4 do Tech Challenge da Fase 4**, conforme o
 | **4 — Governança** | Explicar tratamento de dados pessoais, finalidade e base legal proposta | [Seção 8](#governanca), [plano de privacidade](governance/lgpd_privacy_plan.md) e [dicionário](governance/data_dictionary.md): minimização, quase-identificadores e limites do uso acadêmico | **Documentado** |
 | 4 | Definir retenção, privacidade e mitigação de vieses | [Seção 8](#governanca): prazos propostos, direitos dos titulares, proxies, análise por segmento e revisão humana. Fairness quantitativa e descarte automático não estão implementados | **Documentado** |
 | 4 | Apresentar governança e causalidade no README | [Análise causal no README](#governanca) e [documento complementar](governance/causal_analysis.md): hipótese, confundidores, seleção e limites da conclusão | **Documentado** |
-| 4 | Gravar vídeo STAR e disponibilizar link, até cinco minutos | [Roteiro](governance/video_star_script.md) e [Seção 12](#video); sem link publicado nesta versão auditada | **Pendente** |
+| 4 | Gravar vídeo STAR e disponibilizar link, até cinco minutos | [Roteiro](governance/video_star_script.md) e [Seção 12](#video); [vídeo publicado](https://youtu.be/l8lFG-yi6YA), com duração e conteúdo a conferir | **Link publicado; avaliação audiovisual pendente** |
 
 A rubrica atribui 25% à validação, 25% ao drift, 20% à observabilidade/logs, 15% à governança e 15% ao vídeo. A etapa 4 contém tanto documentação de governança quanto a entrega do vídeo; sua conclusão depende de ambos.
 
@@ -88,9 +88,9 @@ A rubrica atribui 25% à validação, 25% ao drift, 20% à observabilidade/logs,
 | Concept Drift adicional | [Experimento separado](#concept-drift) preserva entradas e muda explicitamente a relação condicional. É evidência sintética, sem comprovar causalidade econômica real. |
 | Centralização operacional | Artefatos têm caminhos definidos e o JSONL centraliza eventos/agregados. Não há serviço de logs externo, histórico por `run_id` nem monitoramento continuamente agendado. |
 | Governança | O requisito teórico está documentado. TLS, RBAC, descarte e fairness quantitativa são propostas/evoluções, sem evidência de implantação ou certificação legal. |
-| Entrega audiovisual | Vídeo e link continuam pendentes na versão examinada. Após publicar, atualizar esta matriz e a [Seção 12](#video). |
+| Entrega audiovisual | Link publicado na [Seção 12](#video). A auditoria histórica de 15/10 não havia examinado o vídeo; duração e conteúdo precisam de avaliação audiovisual. |
 
-**Conclusão da auditoria:** as Etapas 1 e 2 possuem implementação e demonstrações; a Etapa 3 possui dashboard, relatórios, métricas e registros organizados, com a forma de centralização explicitada acima. A documentação teórica da Etapa 4 está presente; a entrega da etapa permanece **parcial enquanto o vídeo não for publicado**. Não foi identificado bloqueador adicional nas verificações executadas. A avaliação é técnica e acadêmica, sem garantia de nota ou declaração de conformidade regulatória.
+**Conclusão da auditoria:** as Etapas 1 e 2 possuem implementação e demonstrações; a Etapa 3 possui dashboard, relatórios, métricas e registros organizados, com a forma de centralização explicitada acima. A documentação teórica da Etapa 4 está presente; o vídeo agora possui link publicado, mas sua duração e seu conteúdo não foram verificados nesta auditoria. Não foi identificado bloqueador adicional nas verificações executadas. A avaliação é técnica e acadêmica, sem garantia de nota ou declaração de conformidade regulatória.
 
 <a id="reproducao"></a>
 
