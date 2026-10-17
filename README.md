@@ -69,7 +69,7 @@ A matriz cobre as **Etapas 1, 2, 3 e 4 do Tech Challenge da Fase 4**, conforme o
 | **4 — Governança** | Explicar tratamento de dados pessoais, finalidade e base legal proposta | [Seção 8](#governanca), [plano de privacidade](governance/lgpd_privacy_plan.md) e [dicionário](governance/data_dictionary.md): minimização, quase-identificadores e limites do uso acadêmico | **Documentado** |
 | 4 | Definir retenção, privacidade e mitigação de vieses | [Seção 8](#governanca): prazos propostos, direitos dos titulares, proxies, análise por segmento e revisão humana. Fairness quantitativa e descarte automático não estão implementados | **Documentado** |
 | 4 | Apresentar governança e causalidade no README | [Análise causal no README](#governanca) e [documento complementar](governance/causal_analysis.md): hipótese, confundidores, seleção e limites da conclusão | **Documentado** |
-| 4 | Gravar vídeo STAR e disponibilizar link, até cinco minutos | [Roteiro](governance/video_star_script.md) e [Seção 12](#video); [vídeo publicado](https://youtu.be/l8lFG-yi6YA), com duração e conteúdo a conferir | **Link publicado** |
+| 4 | Gravar vídeo STAR e disponibilizar link, até cinco minutos | [Roteiro](governance/video_star_script.md) e [Seção 12](#video); [vídeo publicado](https://youtu.be/l8lFG-yi6YA), com duração e conteúdo  | **Link publicado** |
 
 A rubrica atribui 25% à validação, 25% ao drift, 20% à observabilidade/logs, 15% à governança e 15% ao vídeo. A etapa 4 contém tanto documentação de governança quanto a entrega do vídeo; sua conclusão depende de ambos.
 
